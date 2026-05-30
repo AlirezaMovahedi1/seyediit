@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q
 from django.contrib.auth import login
 from django.contrib.auth.models import User
@@ -39,8 +39,9 @@ def dashboard_view(request):
     if priority_filter:
         tickets = tickets.filter(priority=priority_filter)
 
-    # ثبت تیکت جدید (POST)
+    # ثبت یا ویرایش تیکت (POST)
     if request.method == 'POST':
+        ticket_id = request.POST.get('ticket_id')
         full_name = request.POST.get('full_name')
         mobile = request.POST.get('mobile')
         description = request.POST.get('description')
@@ -48,15 +49,25 @@ def dashboard_view(request):
         priority = request.POST.get('priority', 'normal')
         
         if full_name and mobile and description:
-            ticket = Ticket.objects.create(
-                full_name=full_name,
-                mobile=mobile,
-                description=description,
-                status=status,
-                priority=priority,
-                creator=request.user if request.user.is_authenticated else None
-            )
-            ticket.add_log(request.user if request.user.is_authenticated else None, "فرم ثبت اطلاعات ارسال شد.")
+            if ticket_id:  # عملیات ویرایش
+                ticket = get_object_or_404(Ticket, id=ticket_id)
+                ticket.full_name = full_name
+                ticket.mobile = mobile
+                ticket.description = description
+                ticket.status = status
+                ticket.priority = priority
+                ticket.save()
+                ticket.add_log(request.user if request.user.is_authenticated else None, "اطلاعات ویرایش و بروزرسانی شد.")
+            else:  # عملیات ایجاد
+                ticket = Ticket.objects.create(
+                    full_name=full_name,
+                    mobile=mobile,
+                    description=description,
+                    status=status,
+                    priority=priority,
+                    creator=request.user if request.user.is_authenticated else None
+                )
+                ticket.add_log(request.user if request.user.is_authenticated else None, "فرم ثبت اطلاعات ارسال شد.")
             
             # در صورتی که درخواست AJAX باشد
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -103,3 +114,13 @@ def dashboard_view(request):
         }
     }
     return render(request, 'tickets/dashboard.html', context)
+
+def delete_ticket_view(request, ticket_id):
+    """
+    حذف درخواست از طریق درخواست POST امن.
+    """
+    auto_login_dev(request)
+    if request.method == 'POST':
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        ticket.delete()
+    return redirect('dashboard')
