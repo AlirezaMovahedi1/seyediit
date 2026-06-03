@@ -14,7 +14,6 @@ import {
   Search, 
   Filter, 
   Printer, 
-  Settings, 
   ChevronLeft, 
   ChevronRight, 
   X, 
@@ -157,6 +156,15 @@ function App() {
   // Tickets state
   const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      setEditingTicket({ ...selectedTicket });
+    } else {
+      setEditingTicket(null);
+    }
+  }, [selectedTicket]);
 
   // Form registration states
   const [formData, setFormData] = useState({
@@ -230,6 +238,14 @@ function App() {
       setTickets(tickets.filter(t => !selectedRowIds.includes(t.id)));
       setSelectedRowIds([]);
     }
+  };
+
+  // Save changes handler for editing ticket
+  const handleSaveChanges = () => {
+    if (!editingTicket) return;
+    setTickets(prev => prev.map(t => t.id === editingTicket.id ? editingTicket : t));
+    setSelectedTicket(null);
+    alert('تغییرات با موفقیت ذخیره شد.');
   };
 
   // Toggle selection for individual row
@@ -672,7 +688,6 @@ function App() {
                           <th style={{ width: '35%' }}>شرح ایراد</th>
                           <th>آخرین وضعیت کار</th>
                           <th>اولویت</th>
-                          <th style={{ width: '60px', textAlign: 'center' }}>عملیات</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -710,22 +725,11 @@ function App() {
                                   {getPriorityLabel(ticket.priority)}
                                 </span>
                               </td>
-                              <td style={{ textAlign: 'center' }}>
-                                <button 
-                                  className="action-menu-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTicket(ticket);
-                                  }}
-                                >
-                                  <Settings size={16} />
-                                </button>
-                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={9} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                            <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
                               هیچ تیکتی مطابق با فیلترهای جستجو یافت نشد.
                             </td>
                           </tr>
@@ -887,7 +891,7 @@ function App() {
       <div className={`modal-overlay ${selectedTicket ? 'open' : ''}`} onClick={() => setSelectedTicket(null)}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
-            <h3 className="modal-title">جزئیات درخواست پشتیبانی #{selectedTicket?.id}</h3>
+            <h3 className="modal-title">ویرایش و جزئیات درخواست پشتیبانی #{selectedTicket?.id}</h3>
             <button className="close-btn" onClick={() => setSelectedTicket(null)}>
               <X size={20} />
             </button>
@@ -896,44 +900,75 @@ function App() {
           <div className="modal-body">
             <div className="detail-row">
               <span className="detail-label">نام فرستنده</span>
-              <span className="detail-value" style={{ fontWeight: 600 }}>{selectedTicket?.name}</span>
+              <span className="detail-value">
+                <input 
+                  type="text" 
+                  className="modal-input" 
+                  value={editingTicket?.name || ''} 
+                  onChange={(e) => setEditingTicket(prev => prev ? { ...prev, name: e.target.value } : null)}
+                />
+              </span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">موبایل</span>
-              <span className="detail-value">{selectedTicket?.mobile}</span>
+              <span className="detail-value">
+                <input 
+                  type="text" 
+                  className="modal-input" 
+                  style={{ direction: 'ltr', textAlign: 'right' }}
+                  value={editingTicket?.mobile || ''} 
+                  onChange={(e) => setEditingTicket(prev => prev ? { ...prev, mobile: e.target.value } : null)}
+                />
+              </span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">تاریخ ثبت</span>
-              <span className="detail-value">{selectedTicket?.date}</span>
+              <span className="detail-value" style={{ paddingTop: '8px' }}>{editingTicket?.date}</span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">وضعیت کنونی</span>
               <span className="detail-value">
-                {selectedTicket && (
-                  <span className={`status-pill ${selectedTicket.status}`}>
-                    {getStatusLabel(selectedTicket.status)}
-                  </span>
-                )}
+                <select 
+                  className="modal-select" 
+                  value={editingTicket?.status || 'new'} 
+                  onChange={(e) => setEditingTicket(prev => prev ? { ...prev, status: e.target.value as any } : null)}
+                >
+                  <option value="new">جدید</option>
+                  <option value="progress">در حال انجام</option>
+                  <option value="success">بسته شد (موفق)</option>
+                  <option value="cancel">بسته شد (کنسل)</option>
+                  <option value="finance">مالی</option>
+                </select>
               </span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">اولویت تیکت</span>
               <span className="detail-value">
-                {selectedTicket && (
-                  <span className={`priority-pill ${selectedTicket.priority}`}>
-                    {getPriorityLabel(selectedTicket.priority)}
-                  </span>
-                )}
+                <select 
+                  className="modal-select" 
+                  value={editingTicket?.priority || 'normal'} 
+                  onChange={(e) => setEditingTicket(prev => prev ? { ...prev, priority: e.target.value as any } : null)}
+                >
+                  <option value="normal">عادی</option>
+                  <option value="urgent">فوری</option>
+                  <option value="critical">بسیار فوری</option>
+                </select>
               </span>
             </div>
 
             <div className="detail-row">
               <span className="detail-label">شرح مشکل</span>
-              <span className="detail-value" style={{ whiteSpace: 'pre-line' }}>{selectedTicket?.description}</span>
+              <span className="detail-value">
+                <textarea 
+                  className="modal-textarea" 
+                  value={editingTicket?.description || ''} 
+                  onChange={(e) => setEditingTicket(prev => prev ? { ...prev, description: e.target.value } : null)}
+                />
+              </span>
             </div>
 
             {/* Audit Log / History Logging */}
@@ -975,31 +1010,14 @@ function App() {
           </div>
 
           <div className="modal-footer">
-            <button className="btn-secondary" onClick={() => setSelectedTicket(null)}>بستن</button>
-            {selectedTicket?.status === 'new' && (
-              <button 
-                className="btn-extend" 
-                style={{ backgroundColor: 'var(--primary)' }}
-                onClick={() => {
-                  setTickets(tickets.map(t => t.id === selectedTicket.id ? { ...t, status: 'progress' } : t));
-                  setSelectedTicket({ ...selectedTicket, status: 'progress' });
-                }}
-              >
-                شروع انجام کار
-              </button>
-            )}
-            {selectedTicket?.status === 'progress' && (
-              <button 
-                className="btn-extend" 
-                style={{ backgroundColor: '#10b981' }}
-                onClick={() => {
-                  setTickets(tickets.map(t => t.id === selectedTicket.id ? { ...t, status: 'success' } : t));
-                  setSelectedTicket({ ...selectedTicket, status: 'success' });
-                }}
-              >
-                اتمام موفق کار
-              </button>
-            )}
+            <button className="btn-secondary" onClick={() => setSelectedTicket(null)}>انصراف</button>
+            <button 
+              className="btn-extend" 
+              style={{ backgroundColor: 'var(--primary)' }}
+              onClick={handleSaveChanges}
+            >
+              ذخیره تغییرات
+            </button>
           </div>
         </div>
       </div>
