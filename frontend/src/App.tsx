@@ -12,7 +12,6 @@ import {
   Moon, 
   Bell, 
   Search, 
-  Filter, 
   Printer, 
   ChevronLeft, 
   ChevronRight, 
@@ -182,9 +181,6 @@ function App() {
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Table selection states
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
@@ -274,12 +270,9 @@ function App() {
         ticket.mobile.includes(searchQuery) ||
         ticket.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-      const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
-
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch;
     });
-  }, [tickets, searchQuery, statusFilter, priorityFilter]);
+  }, [tickets, searchQuery]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
@@ -564,14 +557,6 @@ function App() {
                     </div>
 
                     <div className="filter-actions">
-                      <button 
-                        className={`btn-secondary ${showAdvancedFilters ? 'active' : ''}`}
-                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                      >
-                        <Filter size={16} />
-                        <span>فیلتر</span>
-                      </button>
-
                       <button className="btn-secondary" onClick={() => window.print()}>
                         <Printer size={16} />
                         <span>چاپ گزارش</span>
@@ -580,62 +565,6 @@ function App() {
                   </div>
                 )}
               </div>
-
-              {/* Advanced Filter Panel */}
-              {activeTab === 'search' && showAdvancedFilters && (
-                <div className="advanced-filters" style={{ padding: '0 24px 20px 24px', display: 'flex', gap: '16px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>فیلتر وضعیت</label>
-                    <select 
-                      style={{ padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontFamily: 'var(--font-family)' }}
-                      value={statusFilter}
-                      onChange={(e) => {
-                        setStatusFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <option value="all">همه وضعیت‌ها</option>
-                      <option value="new">جدید</option>
-                      <option value="progress">در حال انجام</option>
-                      <option value="success">بسته شد (موفق)</option>
-                      <option value="cancel">بسته شد (کنسل)</option>
-                      <option value="finance">مالی</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>فیلتر اولویت</label>
-                    <select 
-                      style={{ padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontFamily: 'var(--font-family)' }}
-                      value={priorityFilter}
-                      onChange={(e) => {
-                        setPriorityFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <option value="all">همه اولویت‌ها</option>
-                      <option value="normal">عادی</option>
-                      <option value="urgent">فوری</option>
-                      <option value="critical">بسیار فوری</option>
-                    </select>
-                  </div>
-
-                  {(statusFilter !== 'all' || priorityFilter !== 'all' || searchQuery !== '') && (
-                    <button 
-                      className="btn-secondary" 
-                      style={{ alignSelf: 'flex-end', padding: '8px 12px' }}
-                      onClick={() => {
-                        setStatusFilter('all');
-                        setPriorityFilter('all');
-                        setSearchQuery('');
-                        setCurrentPage(1);
-                      }}
-                    >
-                      حذف فیلترها
-                    </button>
-                  )}
-                </div>
-              )}
 
               {/* Tab 1: Register Ticket Form */}
               {activeTab === 'register' && (
