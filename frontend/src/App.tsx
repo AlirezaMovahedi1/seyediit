@@ -264,23 +264,6 @@ function App() {
     alert('تغییرات با موفقیت ذخیره شد.');
   };
 
-  // Toggle selection for individual row
-  const toggleRowSelection = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid opening modal when clicking checkbox
-    setSelectedRowIds(prev => 
-      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
-    );
-  };
-
-  // Toggle selection for all rows
-  const toggleSelectAll = () => {
-    if (selectedRowIds.length === currentItems.length) {
-      setSelectedRowIds([]);
-    } else {
-      setSelectedRowIds(currentItems.map(t => t.id));
-    }
-  };
-
   // Filtering Logic
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket => {
@@ -302,6 +285,31 @@ function App() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredTickets.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTickets, currentPage]);
+
+  // Check if all items on current page are selected
+  const isAllSelected = useMemo(() => {
+    return currentItems.length > 0 && currentItems.every(t => selectedRowIds.includes(t.id));
+  }, [currentItems, selectedRowIds]);
+
+  // Toggle selection for individual row
+  const toggleRowSelection = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid opening modal when clicking checkbox
+    setSelectedRowIds(prev => 
+      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle selection for all rows
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedRowIds(prev => prev.filter(id => !currentItems.some(item => item.id === id)));
+    } else {
+      setSelectedRowIds(prev => {
+        const newIds = currentItems.map(t => t.id).filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
+    }
+  };
 
   // Dynamic Statistics
   const stats = useMemo(() => {
@@ -716,7 +724,7 @@ function App() {
                             <input 
                               type="checkbox" 
                               className="custom-checkbox"
-                              checked={currentItems.length > 0 && selectedRowIds.length === currentItems.length}
+                              checked={isAllSelected}
                               onChange={toggleSelectAll}
                             />
                           </th>
@@ -732,8 +740,12 @@ function App() {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((ticket, index) => (
-                            <tr key={ticket.id} onClick={() => setSelectedTicket(ticket)}>
-                              <td className="checkbox-cell">
+                            <tr 
+                              key={ticket.id} 
+                              onClick={() => setSelectedTicket(ticket)}
+                              className={selectedRowIds.includes(ticket.id) ? 'selected' : ''}
+                            >
+                              <td className="checkbox-cell" onClick={(e) => e.stopPropagation()}>
                                 <input 
                                   type="checkbox" 
                                   className="custom-checkbox"

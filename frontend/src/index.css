@@ -54,6 +54,9 @@
   --priority-urgent-text: #ea580c;
   --priority-critical-bg: #fef2f2;
   --priority-critical-text: #ef4444;
+
+  /* Selection colors */
+  --selected-row-bg: #fffbeb;
 }
 
 [data-theme="dark"] {
@@ -101,6 +104,9 @@
   --priority-urgent-text: #ff9d66;
   --priority-critical-bg: rgba(239, 68, 68, 0.2);
   --priority-critical-text: #fca5a5;
+
+  /* Selection colors */
+  --selected-row-bg: rgba(245, 158, 11, 0.12);
 }
 
 /* Resets */
@@ -815,6 +821,14 @@ html, body {
 
 .data-table tbody tr:hover td {
   background-color: var(--bg-sidebar-active);
+}
+
+.data-table tbody tr.selected td {
+  background-color: var(--selected-row-bg);
+}
+
+.data-table tbody tr.selected:hover td {
+  background-color: var(--selected-row-bg);
 }
 
 /* Status Pills */
