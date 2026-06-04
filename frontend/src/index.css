@@ -416,39 +416,120 @@ html, body {
 }
 
 /* User Profile Widget */
+.profile-menu-container {
+  position: relative;
+  z-index: 90;
+}
+
 .user-profile {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 6px 12px;
-  border-radius: var(--border-radius-full);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   background-color: var(--bg-sidebar-active);
   border: 1px solid var(--border);
   transition: all var(--transition-fast);
+  user-select: none;
 }
 
 .user-profile:hover {
   background-color: var(--border);
 }
 
-.avatar {
+.avatar-circle {
   width: 32px;
   height: 32px;
   border-radius: var(--border-radius-full);
-  background: linear-gradient(135deg, #a855f7, #6366f1);
-  color: white;
+  background-color: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .avatar-circle {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
 }
 
 .user-name {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main);
+}
+
+/* Dropdown Container */
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 220px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 95;
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+.dropdown-item {
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: right;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-sidebar-active);
+}
+
+.dropdown-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 6px 0;
+  width: 100%;
+}
+
+.dropdown-item.package-info {
+  color: #a855f7; /* Purple */
+  font-weight: 700;
+  cursor: default;
+}
+
+.dropdown-item.package-info:hover {
+  background-color: transparent;
+}
+
+[data-theme="dark"] .dropdown-item.package-info {
+  color: #c084fc; /* Lighter purple for dark mode */
+}
+
+.dropdown-item.logout {
+  color: #ef4444; /* Red */
+  font-weight: 600;
+}
+
+.dropdown-item.logout:hover {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 85;
+  background: transparent;
 }
 
 /* Main Content Area */

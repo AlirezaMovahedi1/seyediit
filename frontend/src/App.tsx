@@ -16,6 +16,8 @@ import {
   Printer, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown,
+  ChevronUp,
   X, 
   Menu, 
   Plus, 
@@ -152,6 +154,7 @@ function App() {
   const [activeMenu, setActiveMenu] = useState<string>('submissions');
   const [activeTab, setActiveTab] = useState<'register' | 'search' | 'reports'>('search');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   // Tickets state
   const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
@@ -384,8 +387,6 @@ function App() {
           </div>
 
           <div className="header-left">
-            <button className="btn-extend">تمدید پنل</button>
-
             {/* Notification Badge */}
             <div className="icon-btn">
               <Bell size={20} />
@@ -398,9 +399,34 @@ function App() {
             </button>
 
             {/* User Info Dropdown */}
-            <div className="user-profile">
-              <div className="avatar">عم</div>
-              <span className="user-name">علیرضا موحدی</span>
+            <div className="profile-menu-container">
+              <div className="user-profile" onClick={() => setProfileMenuOpen(!profileMenuOpen)}>
+                <div className="avatar-circle">
+                  <User size={18} />
+                </div>
+                <span className="user-name">علیرضا موحدی</span>
+                {profileMenuOpen ? <ChevronUp size={16} style={{ marginRight: '4px' }} /> : <ChevronDown size={16} style={{ marginRight: '4px' }} />}
+              </div>
+
+              {profileMenuOpen && (
+                <>
+                  <div className="dropdown-overlay" onClick={() => setProfileMenuOpen(false)} />
+                  <div className="profile-dropdown">
+                    <div className="dropdown-item">پروفایل</div>
+                    <div className="dropdown-item">تنظیمات</div>
+                    <hr className="dropdown-divider" />
+                    <div className="dropdown-item">راهنما</div>
+                    <div className="dropdown-item">پشتیبانی</div>
+                    <hr className="dropdown-divider" />
+                    <div className="dropdown-item package-info">نوع پکیج: تجاری</div>
+                    <div className="dropdown-item">تمدید پکیج</div>
+                    <div className="dropdown-item">ارتقاء یا تنزل پکیج</div>
+                    <div className="dropdown-item">شارژ پیامک و حجم</div>
+                    <hr className="dropdown-divider" />
+                    <div className="dropdown-item logout">خروج</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
