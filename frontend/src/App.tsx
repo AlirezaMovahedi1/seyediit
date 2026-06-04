@@ -197,6 +197,19 @@ function App() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Listen for Escape key to close modal, dropdown, or mobile sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedTicket(null);
+        setProfileMenuOpen(false);
+        setMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
