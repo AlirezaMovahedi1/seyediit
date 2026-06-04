@@ -16,6 +16,8 @@ import {
   Printer, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronsLeft,
+  ChevronsRight,
   ChevronDown,
   ChevronUp,
   X, 
@@ -189,7 +191,7 @@ function App() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Apply theme to document
   useEffect(() => {
@@ -506,17 +508,15 @@ function App() {
               <div className="card-header">
                 <div className="card-title-row">
                   <h2 className="card-title">درگاه درخواست خدمات انفورماتیک غیر حضوری</h2>
-                  {selectedRowIds.length > 0 && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn-secondary" onClick={() => alert(`${selectedRowIds.length} تیکت با موفقیت بایگانی شد.`)}>
-                        <span>بایگانی</span>
-                      </button>
-                      <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteSelected}>
-                        <Trash2 size={16} />
-                        <span>حذف ({selectedRowIds.length})</span>
-                      </button>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: '8px', visibility: selectedRowIds.length > 0 ? 'visible' : 'hidden' }}>
+                    <button className="btn-secondary" onClick={() => alert(`${selectedRowIds.length} تیکت با موفقیت بایگانی شد.`)}>
+                      <span>بایگانی</span>
+                    </button>
+                    <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteSelected}>
+                      <Trash2 size={16} />
+                      <span>حذف ({selectedRowIds.length})</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Sub Tab Navigation */}
@@ -796,44 +796,78 @@ function App() {
 
                   {/* Pagination Footer */}
                   <div className="table-footer">
-                    <span>
-                      نمایش {filteredTickets.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} تا {Math.min(currentPage * itemsPerPage, filteredTickets.length)} از {filteredTickets.length} تیکت
+                    <span className="footer-info">
+                      نمایش {filteredTickets.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} تا {Math.min(currentPage * itemsPerPage, filteredTickets.length)} از {filteredTickets.length} رکورد
                     </span>
 
-                    {totalPages > 1 && (
-                      <div className="pagination">
-                        <button 
-                          className="pagination-btn" 
-                          disabled={currentPage === 1}
-                          onClick={() => setCurrentPage(prev => prev - 1)}
-                        >
-                          <ChevronRight size={18} />
-                        </button>
-                        
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button 
-                            key={page} 
-                            className="pagination-btn"
-                            style={{ 
-                              backgroundColor: currentPage === page ? 'var(--primary)' : 'var(--bg-surface)', 
-                              color: currentPage === page ? 'white' : 'var(--text-main)',
-                              borderColor: currentPage === page ? 'var(--primary)' : 'var(--border)'
-                            }}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </button>
-                        ))}
+                    <div className="pagination">
+                      <button 
+                        className="pagination-btn" 
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(1)}
+                        title="صفحه اول"
+                      >
+                        <ChevronsRight size={16} />
+                      </button>
+                      <button 
+                        className="pagination-btn" 
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => prev - 1)}
+                        title="صفحه قبل"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
 
-                        <button 
-                          className="pagination-btn" 
-                          disabled={currentPage === totalPages}
-                          onClick={() => setCurrentPage(prev => prev + 1)}
-                        >
-                          <ChevronLeft size={18} />
-                        </button>
-                      </div>
-                    )}
+                      <span className="pagination-info">
+                        صفحه
+                        <input 
+                          type="number" 
+                          className="page-input" 
+                          value={currentPage}
+                          min={1}
+                          max={totalPages || 1}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (val >= 1 && val <= totalPages) setCurrentPage(val);
+                          }}
+                        />
+                        از {totalPages || 1}
+                      </span>
+
+                      <button 
+                        className="pagination-btn" 
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        title="صفحه بعد"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button 
+                        className="pagination-btn" 
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={() => setCurrentPage(totalPages)}
+                        title="صفحه آخر"
+                      >
+                        <ChevronsLeft size={16} />
+                      </button>
+                    </div>
+
+                    <div className="per-page-selector">
+                      <span>تعداد رکوردهای لیست:</span>
+                      <select 
+                        className="per-page-select"
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(parseInt(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value={5}>۵</option>
+                        <option value={10}>۱۰</option>
+                        <option value={20}>۲۰</option>
+                        <option value={50}>۵۰</option>
+                      </select>
+                    </div>
                   </div>
                 </>
               )}
