@@ -507,10 +507,15 @@ function App() {
                 <div className="card-title-row">
                   <h2 className="card-title">درگاه درخواست خدمات انفورماتیک غیر حضوری</h2>
                   {selectedRowIds.length > 0 && (
-                    <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteSelected}>
-                      <Trash2 size={16} />
-                      <span>حذف ({selectedRowIds.length})</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn-secondary" onClick={() => alert(`${selectedRowIds.length} تیکت با موفقیت بایگانی شد.`)}>
+                        <span>بایگانی</span>
+                      </button>
+                      <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteSelected}>
+                        <Trash2 size={16} />
+                        <span>حذف ({selectedRowIds.length})</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
