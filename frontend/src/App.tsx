@@ -28,7 +28,8 @@ import {
   CheckCircle,
   RefreshCw,
   User,
-  Phone
+  Phone,
+  Settings
 } from 'lucide-react';
 
 interface Ticket {
@@ -279,7 +280,7 @@ function App() {
   const currentItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredTickets.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredTickets, currentPage]);
+  }, [filteredTickets, currentPage, itemsPerPage]);
 
   // Check if all items on current page are selected
   const isAllSelected = useMemo(() => {
@@ -557,9 +558,11 @@ function App() {
                     </div>
 
                     <div className="filter-actions">
-                      <button className="btn-secondary" onClick={() => window.print()}>
+                      <button className="btn-secondary btn-icon-only" onClick={() => window.print()} title="چاپ گزارش">
                         <Printer size={16} />
-                        <span>چاپ گزارش</span>
+                      </button>
+                      <button className="btn-secondary btn-icon-only green-btn" title="تنظیمات">
+                        <Settings size={16} />
                       </button>
                     </div>
                   </div>
