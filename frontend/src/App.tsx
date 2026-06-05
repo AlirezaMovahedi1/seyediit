@@ -794,7 +794,7 @@ function App() {
                         <option value={5}>۵</option>
                         <option value={10}>۱۰</option>
                         <option value={20}>۲۰</option>
-                        <option value={50}>۵۰</option>
+                        <option value={100}>۱۰۰</option>
                       </select>
                     </div>
                   </div>
