@@ -25,11 +25,14 @@ import {
   Trash2, 
   HelpCircle,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   RefreshCw,
   User,
   Phone,
-  Settings
+  Settings,
+  Sliders,
+  Wallet
 } from 'lucide-react';
 
 interface Ticket {
@@ -185,6 +188,14 @@ function App() {
 
   // Table selection states
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+
+  // Archive-specific states
+  const [archiveSearchQuery, setArchiveSearchQuery] = useState('');
+  const [archiveCurrentPage, setArchiveCurrentPage] = useState(1);
+  const [archiveItemsPerPage, setArchiveItemsPerPage] = useState(10);
+  const [archiveSelectedRowIds, setArchiveSelectedRowIds] = useState<number[]>([]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,6 +212,8 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedTicket(null);
+        setShowDeleteConfirm(false);
+        setShowArchiveConfirm(false);
         setProfileMenuOpen(false);
         setMobileSidebarOpen(false);
       }
@@ -249,10 +262,13 @@ function App() {
   // Delete handler
   const handleDeleteSelected = () => {
     if (selectedRowIds.length === 0) return;
-    if (window.confirm(`آیا از حذف ${selectedRowIds.length} تیکت انتخاب شده مطمئن هستید؟`)) {
-      setTickets(tickets.filter(t => !selectedRowIds.includes(t.id)));
-      setSelectedRowIds([]);
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteSelected = () => {
+    setTickets(tickets.filter(t => !selectedRowIds.includes(t.id)));
+    setSelectedRowIds([]);
+    setShowDeleteConfirm(false);
   };
 
   // Save changes handler for editing ticket
@@ -263,9 +279,41 @@ function App() {
     alert('تغییرات با موفقیت ذخیره شد.');
   };
 
+  // Archive Selected Action
+  const handleArchiveSelected = () => {
+    if (selectedRowIds.length === 0) return;
+    setShowArchiveConfirm(true);
+  };
+
+  const confirmArchiveSelected = () => {
+    setTickets(prev => 
+      prev.map(t => selectedRowIds.includes(t.id) ? { ...t, isArchived: true } : t)
+    );
+    setSelectedRowIds([]);
+    setShowArchiveConfirm(false);
+  };
+
+  // Archive View Actions
+  const handleUnarchiveSelected = () => {
+    if (archiveSelectedRowIds.length === 0) return;
+    setTickets(prev => 
+      prev.map(t => archiveSelectedRowIds.includes(t.id) ? { ...t, isArchived: false } : t)
+    );
+    setArchiveSelectedRowIds([]);
+  };
+
+  const handleDeleteArchivedSelected = () => {
+    if (archiveSelectedRowIds.length === 0) return;
+    if (window.confirm(`آیا از حذف دائمی ${archiveSelectedRowIds.length} تیکت بایگانی شده مطمئن هستید؟`)) {
+      setTickets(tickets.filter(t => !archiveSelectedRowIds.includes(t.id)));
+      setArchiveSelectedRowIds([]);
+    }
+  };
+
   // Filtering Logic
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket => {
+      if (ticket.isArchived) return false;
       const matchesSearch = 
         ticket.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ticket.mobile.includes(searchQuery) ||
@@ -274,6 +322,48 @@ function App() {
       return matchesSearch;
     });
   }, [tickets, searchQuery]);
+
+  // Archive Filtering Logic
+  const filteredArchiveTickets = useMemo(() => {
+    return tickets.filter(ticket => {
+      if (!ticket.isArchived) return false;
+      const matchesSearch = 
+        ticket.name.toLowerCase().includes(archiveSearchQuery.toLowerCase()) ||
+        ticket.mobile.includes(archiveSearchQuery) ||
+        ticket.description.toLowerCase().includes(archiveSearchQuery.toLowerCase());
+      
+      return matchesSearch;
+    });
+  }, [tickets, archiveSearchQuery]);
+
+  // Archive Pagination Logic
+  const archiveTotalPages = Math.ceil(filteredArchiveTickets.length / archiveItemsPerPage);
+  const currentArchiveItems = useMemo(() => {
+    const startIndex = (archiveCurrentPage - 1) * archiveItemsPerPage;
+    return filteredArchiveTickets.slice(startIndex, startIndex + archiveItemsPerPage);
+  }, [filteredArchiveTickets, archiveCurrentPage, archiveItemsPerPage]);
+
+  const isAllArchiveSelected = useMemo(() => {
+    return currentArchiveItems.length > 0 && currentArchiveItems.every(t => archiveSelectedRowIds.includes(t.id));
+  }, [currentArchiveItems, archiveSelectedRowIds]);
+
+  const toggleArchiveRowSelection = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setArchiveSelectedRowIds(prev => 
+      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+    );
+  };
+
+  const toggleArchiveSelectAll = () => {
+    if (isAllArchiveSelected) {
+      setArchiveSelectedRowIds(prev => prev.filter(id => !currentArchiveItems.some(item => item.id === id)));
+    } else {
+      setArchiveSelectedRowIds(prev => {
+        const newIds = currentArchiveItems.map(t => t.id).filter(id => !prev.includes(id));
+        return [...prev, ...newIds];
+      });
+    }
+  };
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
@@ -309,10 +399,11 @@ function App() {
 
   // Dynamic Statistics
   const stats = useMemo(() => {
-    const total = tickets.length;
-    const newCount = tickets.filter(t => t.status === 'new').length;
-    const progressCount = tickets.filter(t => t.status === 'progress').length;
-    const closedCount = tickets.filter(t => t.status === 'success' || t.status === 'cancel').length;
+    const activeTickets = tickets.filter(t => !t.isArchived);
+    const total = activeTickets.length;
+    const newCount = activeTickets.filter(t => t.status === 'new').length;
+    const progressCount = activeTickets.filter(t => t.status === 'progress').length;
+    const closedCount = activeTickets.filter(t => t.status === 'success' || t.status === 'cancel').length;
     return { total, newCount, progressCount, closedCount };
   }, [tickets]);
 
@@ -347,8 +438,8 @@ function App() {
     { id: 'submissions', label: 'ارسالی‌ها', icon: Send },
     { id: 'reports', label: 'گزارش', icon: BarChart3 },
     { id: 'archive', label: 'بایگانی', icon: Archive },
-    { id: 'users', label: 'کاربران', icon: Users },
-    { id: 'support', label: 'پشتیبانی', icon: LifeBuoy },
+    { id: 'admin', label: 'مدیریت سیستم', icon: Sliders },
+    { id: 'finance', label: 'امور مالی و حسابداری', icon: Wallet },
     { id: 'chat', label: 'گفتگو آنلاین', icon: MessageSquare },
   ];
 
@@ -503,7 +594,7 @@ function App() {
                 <div className="card-title-row">
                   <h2 className="card-title">درگاه درخواست خدمات انفورماتیک غیر حضوری</h2>
                   <div style={{ display: 'flex', gap: '8px', visibility: selectedRowIds.length > 0 ? 'visible' : 'hidden' }}>
-                    <button className="btn-secondary" onClick={() => alert(`${selectedRowIds.length} تیکت با موفقیت بایگانی شد.`)}>
+                    <button className="btn-secondary" onClick={handleArchiveSelected}>
                       <span>بایگانی</span>
                     </button>
                     <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteSelected}>
@@ -561,7 +652,7 @@ function App() {
                       <button className="btn-secondary btn-icon-only" onClick={() => window.print()} title="چاپ گزارش">
                         <Printer size={16} />
                       </button>
-                      <button className="btn-secondary btn-icon-only green-btn" title="تنظیمات">
+                      <button className="btn-secondary btn-icon-only" title="تنظیمات">
                         <Settings size={16} />
                       </button>
                     </div>
@@ -873,8 +964,200 @@ function App() {
             </div>
           )}
 
+          {/* Archive View */}
+          {activeMenu === 'archive' && (
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div className="card-title-row">
+                  <h2 className="card-title">بخش تیکت‌های بایگانی شده</h2>
+                  <div style={{ display: 'flex', gap: '8px', visibility: archiveSelectedRowIds.length > 0 ? 'visible' : 'hidden' }}>
+                    <button className="btn-secondary" style={{ color: 'var(--primary)', borderColor: 'var(--border)' }} onClick={handleUnarchiveSelected}>
+                      <span>خروج از بایگانی</span>
+                    </button>
+                    <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleDeleteArchivedSelected}>
+                      <Trash2 size={16} />
+                      <span>حذف دائمی ({archiveSelectedRowIds.length})</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="controls-row">
+                  <div className="search-box">
+                    <Search size={18} style={{ color: 'var(--text-muted)' }} />
+                    <input 
+                      type="text" 
+                      placeholder="جستجو در بایگانی..."
+                      className="search-input"
+                      value={archiveSearchQuery}
+                      onChange={(e) => {
+                        setArchiveSearchQuery(e.target.value);
+                        setArchiveCurrentPage(1);
+                      }}
+                    />
+                    {archiveSearchQuery && (
+                      <button className="close-btn" style={{ marginLeft: 8 }} onClick={() => setArchiveSearchQuery('')}>
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th className="checkbox-cell">
+                        <input 
+                          type="checkbox" 
+                          className="custom-checkbox"
+                          checked={isAllArchiveSelected}
+                          onChange={toggleArchiveSelectAll}
+                        />
+                      </th>
+                      <th style={{ width: '60px' }}>ردیف</th>
+                      <th>تاریخ ثبت</th>
+                      <th>نام و نام خانوادگی</th>
+                      <th>موبایل</th>
+                      <th style={{ width: '35%' }}>شرح ایراد</th>
+                      <th>وضعیت کار</th>
+                      <th>اولویت</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentArchiveItems.length > 0 ? (
+                      currentArchiveItems.map((ticket, index) => (
+                        <tr 
+                          key={ticket.id} 
+                          onClick={() => setSelectedTicket(ticket)}
+                          className={archiveSelectedRowIds.includes(ticket.id) ? 'selected' : ''}
+                        >
+                          <td className="checkbox-cell" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="checkbox" 
+                              className="custom-checkbox"
+                              checked={archiveSelectedRowIds.includes(ticket.id)}
+                              onChange={(e) => toggleArchiveRowSelection(ticket.id, e as any)}
+                            />
+                          </td>
+                          <td>{((archiveCurrentPage - 1) * archiveItemsPerPage) + index + 1}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{ticket.date}</td>
+                          <td style={{ fontWeight: 600 }}>{ticket.name}</td>
+                          <td>
+                            <a 
+                              href={`tel:${ticket.mobile}`} 
+                              style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {ticket.mobile}
+                            </a>
+                          </td>
+                          <td style={{ color: 'var(--text-muted)' }}>{ticket.description}</td>
+                          <td>
+                            <span className={`status-pill ${ticket.status}`}>
+                              {getStatusLabel(ticket.status)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`priority-pill ${ticket.priority}`}>
+                              {getPriorityLabel(ticket.priority)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                          هیچ تیکت بایگانی شده‌ای یافت نشد.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {filteredArchiveTickets.length > 0 && (
+                <div className="table-footer">
+                  <span className="footer-info">
+                    نمایش {filteredArchiveTickets.length > 0 ? (archiveCurrentPage - 1) * archiveItemsPerPage + 1 : 0} تا {Math.min(archiveCurrentPage * archiveItemsPerPage, filteredArchiveTickets.length)} از {filteredArchiveTickets.length} رکورد
+                  </span>
+
+                  <div className="pagination">
+                    <button 
+                      className="pagination-btn" 
+                      disabled={archiveCurrentPage === 1}
+                      onClick={() => setArchiveCurrentPage(1)}
+                      title="صفحه اول"
+                    >
+                      <ChevronsRight size={16} />
+                    </button>
+                    <button 
+                      className="pagination-btn" 
+                      disabled={archiveCurrentPage === 1}
+                      onClick={() => setArchiveCurrentPage(prev => prev - 1)}
+                      title="صفحه قبل"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+
+                    <span className="pagination-info">
+                      صفحه
+                      <input 
+                        type="number" 
+                        className="page-input" 
+                        value={archiveCurrentPage}
+                        min={1}
+                        max={archiveTotalPages || 1}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (val >= 1 && val <= archiveTotalPages) setArchiveCurrentPage(val);
+                        }}
+                      />
+                      از {archiveTotalPages || 1}
+                    </span>
+
+                    <button 
+                      className="pagination-btn" 
+                      disabled={archiveCurrentPage === archiveTotalPages || archiveTotalPages === 0}
+                      onClick={() => setArchiveCurrentPage(prev => prev + 1)}
+                      title="صفحه بعد"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button 
+                      className="pagination-btn" 
+                      disabled={archiveCurrentPage === archiveTotalPages || archiveTotalPages === 0}
+                      onClick={() => setArchiveCurrentPage(archiveTotalPages)}
+                      title="صفحه آخر"
+                    >
+                      <ChevronsLeft size={16} />
+                    </button>
+                  </div>
+
+                  <div className="per-page-selector">
+                    <span>تعداد رکوردهای لیست:</span>
+                    <select 
+                      className="per-page-select"
+                      value={archiveItemsPerPage}
+                      onChange={(e) => {
+                        setArchiveItemsPerPage(parseInt(e.target.value));
+                        setArchiveCurrentPage(1);
+                      }}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Fallback view simulation for other menu links */}
-          {activeMenu !== 'submissions' && (
+          {activeMenu !== 'submissions' && activeMenu !== 'archive' && (
             <div className="dashboard-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
               <HelpCircle size={48} style={{ color: 'var(--primary)', marginBottom: '16px' }} />
               <h2 className="card-title" style={{ marginBottom: '12px' }}>بخش {menuItems.find(m => m.id === activeMenu)?.label}</h2>
@@ -1040,6 +1323,37 @@ function App() {
             >
               ذخیره تغییرات
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <div className={`modal-overlay ${showDeleteConfirm ? 'open' : ''}`} onClick={() => setShowDeleteConfirm(false)}>
+        <div className="modal-content delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body delete-confirm-body">
+            <div className="delete-confirm-message">
+              <AlertTriangle size={28} className="delete-confirm-icon" />
+              <span>آیا مطمئن به حذف هستید؟</span>
+            </div>
+            <div className="delete-confirm-actions">
+              <button className="btn-confirm-yes" onClick={confirmDeleteSelected}>بله</button>
+              <button className="btn-confirm-no" onClick={() => setShowDeleteConfirm(false)}>خیر</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Archive Confirmation Modal */}
+      <div className={`modal-overlay ${showArchiveConfirm ? 'open' : ''}`} onClick={() => setShowArchiveConfirm(false)}>
+        <div className="modal-content delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-body delete-confirm-body">
+            <div className="delete-confirm-message">
+              <Archive size={28} className="delete-confirm-icon" style={{ color: 'var(--primary)' }} />
+              <span>آیا مطمئن به بایگانی هستید؟</span>
+            </div>
+            <div className="delete-confirm-actions">
+              <button className="btn-confirm-yes" style={{ backgroundColor: 'var(--primary)' }} onClick={confirmArchiveSelected}>بله</button>
+              <button className="btn-confirm-no" onClick={() => setShowArchiveConfirm(false)}>خیر</button>
+            </div>
           </div>
         </div>
       </div>

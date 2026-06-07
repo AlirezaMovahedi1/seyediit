@@ -762,17 +762,6 @@ html, body {
   min-width: 42px;
 }
 
-.green-btn {
-  border-color: #22c55e;
-  color: #22c55e;
-}
-
-.green-btn:hover {
-  background-color: rgba(34, 197, 94, 0.05);
-  border-color: #16a34a;
-  color: #16a34a;
-}
-
 /* Active Filter Badges */
 .active-filters {
   display: flex;
@@ -1328,4 +1317,96 @@ html, body {
   min-height: 100px;
   line-height: 1.6;
 }
+
+/* Delete Confirmation Modal Styles */
+.delete-confirm-modal {
+  max-width: 480px !important;
+  width: 90%;
+  border-radius: 12px;
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.delete-confirm-body {
+  padding: 36px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.delete-confirm-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  direction: rtl;
+}
+
+.delete-confirm-icon {
+  color: #64748b; /* Gray warning icon like in the photo */
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  direction: rtl;
+}
+
+.btn-confirm-yes {
+  background-color: #ef4444; /* red background */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-confirm-yes:hover {
+  background-color: #dc2626;
+}
+
+.btn-confirm-yes:active {
+  transform: scale(0.98);
+}
+
+.btn-confirm-no {
+  background-color: #f1f5f9; /* light gray/white background */
+  color: #475569;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+[data-theme='dark'] .btn-confirm-no {
+  background-color: var(--bg-sidebar-active);
+  color: var(--text-main);
+}
+
+.btn-confirm-no:hover {
+  background-color: #e2e8f0;
+}
+
+[data-theme='dark'] .btn-confirm-no:hover {
+  background-color: var(--border);
+}
+
+.btn-confirm-no:active {
+  transform: scale(0.98);
+}
+
 
