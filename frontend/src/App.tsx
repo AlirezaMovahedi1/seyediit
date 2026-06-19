@@ -5,8 +5,6 @@ import {
   Send, 
   BarChart3, 
   Archive, 
-  Users, 
-  LifeBuoy, 
   MessageSquare, 
   Sun, 
   Moon, 
@@ -32,7 +30,11 @@ import {
   Phone,
   Settings,
   Sliders,
-  Wallet
+  Wallet,
+  Activity,
+  Package,
+  ShoppingCart,
+  Mail
 } from 'lucide-react';
 
 interface Ticket {
@@ -43,6 +45,7 @@ interface Ticket {
   description: string;
   status: 'new' | 'success' | 'cancel' | 'progress' | 'finance';
   priority: 'normal' | 'urgent' | 'critical';
+  isArchived?: boolean;
 }
 
 const INITIAL_TICKETS: Ticket[] = [
@@ -155,13 +158,29 @@ function App() {
     return 'light';
   });
 
+  // User Role State
+  const [userRole, setUserRole] = useState<'manager' | 'support'>(() => {
+    const saved = localStorage.getItem('user_role');
+    return (saved === 'manager' || saved === 'support') ? saved : 'support';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('user_role', userRole);
+  }, [userRole]);
+
+  // Site Admin Session State (Token)
+  const [siteToken, setSiteToken] = useState<string | null>(() => {
+    return localStorage.getItem('site_admin_token');
+  });
+
   // Navigation states
   const [activeMenu, setActiveMenu] = useState<string>('submissions');
   const [activeTab, setActiveTab] = useState<'register' | 'search' | 'reports'>('search');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [siteMenuOpen, setSiteMenuOpen] = useState(false);
 
-  // Tickets state
+  // Tickets state (local organization dashboard)
   const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
@@ -201,13 +220,52 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // ==========================================
+  // Site Admin Dashboard State
+  // ==========================================
+  const [siteStats, setSiteStats] = useState<any>(null);
+  const [siteProducts, setSiteProducts] = useState<any[]>([]);
+  const [siteCategories, setSiteCategories] = useState<any[]>([]);
+  const [siteOrders, setSiteOrders] = useState<any[]>([]);
+  const [siteTickets, setSiteTickets] = useState<any[]>([]);
+  
+  const [siteAdminActiveTab, setSiteAdminActiveTab] = useState<'stats' | 'products' | 'orders' | 'tickets'>('stats');
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [siteError, setSiteError] = useState<string | null>(null);
+
+  // Site Login inputs
+  const [siteLoginUsername, setSiteLoginUsername] = useState('admin');
+  const [siteLoginPassword, setSiteLoginPassword] = useState('');
+  const [siteLoginError, setSiteLoginError] = useState<string | null>(null);
+  const [siteLoginSubmitting, setSiteLoginSubmitting] = useState(false);
+
+  // Products CRUD form/modal states
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null); // null if adding
+  const [productFormData, setProductFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    specs: '',
+    price: '',
+    image: '',
+    type: 'PHYSICAL',
+    categoryId: '',
+    downloadUrl: '',
+    inventory: ''
+  });
+
+  // Selected Order / Ticket view modal states
+  const [selectedSiteOrder, setSelectedSiteOrder] = useState<any>(null);
+  const [selectedSiteTicket, setSelectedSiteTicket] = useState<any>(null);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Listen for Escape key to close modal, dropdown, or mobile sidebar
+  // Listen for Escape key to close modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -216,6 +274,9 @@ function App() {
         setShowArchiveConfirm(false);
         setProfileMenuOpen(false);
         setMobileSidebarOpen(false);
+        setShowProductModal(false);
+        setSelectedSiteOrder(null);
+        setSelectedSiteTicket(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -226,7 +287,7 @@ function App() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Form Submit Handler
+  // Form Submit Handler (local support tickets)
   const handleRegisterTicket = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.mobile || !formData.description) {
@@ -259,7 +320,7 @@ function App() {
     alert('تیکت شما با موفقیت ثبت شد.');
   };
 
-  // Delete handler
+  // Delete handler for local support tickets
   const handleDeleteSelected = () => {
     if (selectedRowIds.length === 0) return;
     setShowDeleteConfirm(true);
@@ -271,7 +332,7 @@ function App() {
     setShowDeleteConfirm(false);
   };
 
-  // Save changes handler for editing ticket
+  // Save changes handler for editing local ticket
   const handleSaveChanges = () => {
     if (!editingTicket) return;
     setTickets(prev => prev.map(t => t.id === editingTicket.id ? editingTicket : t));
@@ -310,7 +371,7 @@ function App() {
     }
   };
 
-  // Filtering Logic
+  // Filtering Logic for local tickets
   const filteredTickets = useMemo(() => {
     return tickets.filter(ticket => {
       if (ticket.isArchived) return false;
@@ -379,7 +440,7 @@ function App() {
 
   // Toggle selection for individual row
   const toggleRowSelection = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid opening modal when clicking checkbox
+    e.stopPropagation();
     setSelectedRowIds(prev => 
       prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
     );
@@ -428,20 +489,342 @@ function App() {
     }
   };
 
-  // Format date helper (Persian Day Name)
-  const todayPersianDate = "چهارشنبه ۱۳ خرداد ۱۴۰۵";
+  // Format date helper
+  const todayPersianDate = "جمعه ۲۹ خرداد ۱۴۰۵";
 
-  // Sidebar Menu Config
-  const menuItems = [
-    { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
-    { id: 'forms', label: 'طراحی فرم', icon: FileText },
-    { id: 'submissions', label: 'ارسالی‌ها', icon: Send },
-    { id: 'reports', label: 'گزارش', icon: BarChart3 },
-    { id: 'archive', label: 'بایگانی', icon: Archive },
-    { id: 'admin', label: 'مدیریت سیستم', icon: Sliders },
-    { id: 'finance', label: 'امور مالی و حسابداری', icon: Wallet },
-    { id: 'chat', label: 'گفتگو آنلاین', icon: MessageSquare },
-  ];
+  // ==========================================
+  // Site Admin API Operations
+  // ==========================================
+  const loadSiteData = async () => {
+    if (!siteToken) return;
+    setSiteLoading(true);
+    setSiteError(null);
+    try {
+      // 1. Fetch Stats
+      const statsRes = await fetch('http://localhost:3000/api/admin/stats', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      if (statsRes.status === 401) {
+        handleSiteLogout();
+        return;
+      }
+      const statsData = await statsRes.json();
+      if (statsData.success) setSiteStats(statsData.stats);
+
+      // 2. Fetch Products
+      const prodRes = await fetch('http://localhost:3000/api/admin/products', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      const prodData = await prodRes.json();
+      if (prodData.success) {
+        setSiteProducts(prodData.products);
+        setSiteCategories(prodData.categories);
+      }
+
+      // 3. Fetch Orders
+      const orderRes = await fetch('http://localhost:3000/api/admin/orders', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      const orderData = await orderRes.json();
+      if (orderData.success) setSiteOrders(orderData.orders);
+
+      // 4. Fetch Tickets
+      const ticketRes = await fetch('http://localhost:3000/api/admin/tickets', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      const ticketData = await ticketRes.json();
+      if (ticketData.success) setSiteTickets(ticketData.tickets);
+
+    } catch (err: any) {
+      console.error('Error loading site admin data:', err);
+      setSiteError('خطا در اتصال به سرور سایت. مطمئن شوید سرور سایت روی پورت ۳۰۰۰ در حال اجراست.');
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isSiteAdminMenu(activeMenu) && siteToken) {
+      loadSiteData();
+    }
+  }, [activeMenu, siteToken]);
+
+  // Auto-open sub-menu when navigating to a site page
+  useEffect(() => {
+    if (isSiteAdminMenu(activeMenu)) {
+      setSiteMenuOpen(true);
+    }
+  }, [activeMenu]);
+
+  const handleSiteLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteLoginUsername || !siteLoginPassword) {
+      setSiteLoginError('وارد کردن نام کاربری و رمز عبور الزامی است.');
+      return;
+    }
+    setSiteLoginSubmitting(true);
+    setSiteLoginError(null);
+    try {
+      const response = await fetch('http://localhost:3000/api/admin/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: siteLoginUsername,
+          password: siteLoginPassword
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'اطلاعات ورود نادرست است.');
+      }
+
+      localStorage.setItem('site_admin_token', data.token);
+      setSiteToken(data.token);
+      setSiteLoginPassword('');
+    } catch (err: any) {
+      setSiteLoginError(err.message || 'خطایی در ورود رخ داده است.');
+    } finally {
+      setSiteLoginSubmitting(false);
+    }
+  };
+
+  const handleSiteLogout = () => {
+    localStorage.removeItem('site_admin_token');
+    setSiteToken(null);
+    setSiteStats(null);
+    setSiteProducts([]);
+    setSiteOrders([]);
+    setSiteTickets([]);
+    fetch('http://localhost:3000/api/admin/auth/logout', { method: 'POST' }).catch(() => {});
+  };
+
+  // Product save operation
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { name, slug, description, price, image, type, categoryId, downloadUrl, inventory, specs } = productFormData;
+    
+    if (!name || !slug || !description || !price || !categoryId) {
+      alert('لطفاً تمامی فیلدهای الزامی محصول را پر کنید.');
+      return;
+    }
+
+    // Try parsing specs JSON to ensure it is valid
+    try {
+      if (specs) {
+        JSON.parse(specs);
+      }
+    } catch (err) {
+      alert('فرمت مشخصات فنی محصول (Specs) باید یک JSON معتبر باشد.');
+      return;
+    }
+
+    setSiteLoading(true);
+    try {
+      const method = editingProduct ? 'PUT' : 'POST';
+      const body = {
+        id: editingProduct ? editingProduct.id : undefined,
+        name,
+        slug,
+        description,
+        price: parseFloat(price),
+        image: image || '/images/placeholder.png',
+        type,
+        categoryId,
+        downloadUrl: type === 'DIGITAL' ? downloadUrl : null,
+        inventory: type === 'PHYSICAL' ? parseInt(inventory) : null,
+        specs: specs || '{}'
+      };
+
+      const response = await fetch('http://localhost:3000/api/admin/products', {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${siteToken}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطایی در ذخیره‌سازی محصول رخ داد.');
+      }
+
+      alert(editingProduct ? 'محصول با موفقیت ویرایش شد.' : 'محصول جدید با موفقیت اضافه شد.');
+      setShowProductModal(false);
+      setEditingProduct(null);
+      loadSiteData();
+    } catch (err: any) {
+      alert(err.message || 'خطایی رخ داد.');
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  // Product delete operation
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (!window.confirm(`آیا از حذف محصول "${name}" مطمئن هستید؟`)) {
+      return;
+    }
+    setSiteLoading(true);
+    try {
+      const response = await fetch(`http://localhost:3000/api/admin/products?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${siteToken}`
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطایی در حذف محصول رخ داد.');
+      }
+      alert('محصول با موفقیت حذف شد.');
+      loadSiteData();
+    } catch (err: any) {
+      alert(err.message || 'خطایی در حذف رخ داد.');
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  // Order status update
+  const handleUpdateOrderStatus = async (id: string, isPaid: boolean) => {
+    setSiteLoading(true);
+    try {
+      const response = await fetch('http://localhost:3000/api/admin/orders', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${siteToken}`
+        },
+        body: JSON.stringify({ id, isPaid })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطایی در بروزرسانی فاکتور رخ داد.');
+      }
+      if (selectedSiteOrder && selectedSiteOrder.id === id) {
+        setSelectedSiteOrder({ ...selectedSiteOrder, isPaid });
+      }
+      loadSiteData();
+    } catch (err: any) {
+      alert(err.message || 'خطایی رخ داد.');
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  // Ticket status update
+  const handleUpdateTicketStatus = async (id: string, status: string) => {
+    setSiteLoading(true);
+    try {
+      const response = await fetch('http://localhost:3000/api/admin/tickets', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${siteToken}`
+        },
+        body: JSON.stringify({ id, status })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطایی در بروزرسانی تیکت رخ داد.');
+      }
+      if (selectedSiteTicket && selectedSiteTicket.id === id) {
+        setSelectedSiteTicket({ ...selectedSiteTicket, status });
+      }
+      loadSiteData();
+    } catch (err: any) {
+      alert(err.message || 'خطایی رخ داد.');
+    } finally {
+      setSiteLoading(false);
+    }
+  };
+
+  const openAddProductModal = () => {
+    setEditingProduct(null);
+    setProductFormData({
+      name: '',
+      slug: '',
+      description: '',
+      specs: '{\n  "برند": "",\n  "مدل": ""\n}',
+      price: '',
+      image: '',
+      type: 'PHYSICAL',
+      categoryId: siteCategories[0]?.id || '',
+      downloadUrl: '',
+      inventory: ''
+    });
+    setShowProductModal(true);
+  };
+
+  const openEditProductModal = (product: any) => {
+    setEditingProduct(product);
+    let specsStr = '{}';
+    try {
+      // Specs might be string or object depending on implementation
+      specsStr = typeof product.specs === 'string' ? product.specs : JSON.stringify(product.specs, null, 2);
+    } catch (e) {}
+
+    setProductFormData({
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      specs: specsStr,
+      price: String(product.price),
+      image: product.image,
+      type: product.type,
+      categoryId: product.categoryId,
+      downloadUrl: product.downloadUrl || '',
+      inventory: product.inventory !== null ? String(product.inventory) : ''
+    });
+    setShowProductModal(true);
+  };
+
+  // Helper: check if current menu is a site-admin sub-page
+  const isSiteAdminMenu = (menuId: string) => menuId.startsWith('site-');
+
+  // Sidebar Menu Config (dynamic based on role)
+  interface MenuItem {
+    id: string;
+    label: string;
+    icon: React.ComponentType<any>;
+    children?: MenuItem[];
+  }
+
+  const menuItems: MenuItem[] = useMemo(() => {
+    const baseItems: MenuItem[] = [
+      { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+      { id: 'forms', label: 'طراحی فرم', icon: FileText },
+      { id: 'submissions', label: 'ارسالی‌ها', icon: Send },
+      { id: 'reports', label: 'گزارش', icon: BarChart3 },
+      { id: 'archive', label: 'بایگانی', icon: Archive },
+    ];
+
+    if (userRole === 'manager') {
+      baseItems.push({
+        id: 'site-admin',
+        label: 'مدیریت سایت',
+        icon: Sliders,
+        children: [
+          { id: 'site-stats', label: 'آمار زنده', icon: Activity },
+          { id: 'site-products', label: 'محصولات سایت', icon: Package },
+          { id: 'site-orders', label: 'سفارشات مشتریان', icon: ShoppingCart },
+          { id: 'site-tickets', label: 'تیکت‌های وب‌سایت', icon: Mail },
+        ]
+      });
+    }
+
+    baseItems.push(
+      { id: 'admin', label: 'مدیریت سیستم', icon: Settings },
+      { id: 'finance', label: 'امور مالی و حسابداری', icon: Wallet },
+      { id: 'chat', label: 'گفتگو آنلاین', icon: MessageSquare }
+    );
+
+    return baseItems;
+  }, [userRole]);
 
   return (
     <div className="app-container">
@@ -462,6 +845,46 @@ function App() {
         <ul className="sidebar-menu">
           {menuItems.map(item => {
             const Icon = item.icon;
+
+            // Item with children → collapsible sub-menu
+            if (item.children && item.children.length > 0) {
+              const isAnyChildActive = item.children.some(child => activeMenu === child.id);
+              return (
+                <li key={item.id} className="sidebar-parent">
+                  <a
+                    className={`sidebar-parent-link ${isAnyChildActive ? 'parent-active' : ''}`}
+                    onClick={() => {
+                      setSiteMenuOpen(prev => !prev);
+                    }}
+                  >
+                    <Icon />
+                    <span>{item.label}</span>
+                    <ChevronDown className={`submenu-chevron ${siteMenuOpen ? 'rotated' : ''}`} />
+                  </a>
+                  <ul className={`sidebar-submenu ${siteMenuOpen ? 'open' : ''}`}>
+                    {item.children.map(child => {
+                      const ChildIcon = child.icon;
+                      return (
+                        <li key={child.id} className="sidebar-submenu-item">
+                          <a
+                            className={`sidebar-submenu-link ${activeMenu === child.id ? 'active' : ''}`}
+                            onClick={() => {
+                              setActiveMenu(child.id);
+                              setMobileSidebarOpen(false);
+                            }}
+                          >
+                            <ChildIcon />
+                            <span>{child.label}</span>
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            }
+
+            // Regular item (no children)
             return (
               <li key={item.id} className="sidebar-item">
                 <a 
@@ -512,7 +935,10 @@ function App() {
                 <div className="avatar-circle">
                   <User size={18} />
                 </div>
-                <span className="user-name">علیرضا موحدی</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+                  <span className="user-name" style={{ fontSize: '0.85rem' }}>علیرضا موحدی</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{userRole === 'manager' ? 'مدیر سیستم' : 'کارشناس پشتیبانی'}</span>
+                </div>
                 {profileMenuOpen ? <ChevronUp size={16} style={{ marginRight: '4px' }} /> : <ChevronDown size={16} style={{ marginRight: '4px' }} />}
               </div>
 
@@ -523,15 +949,36 @@ function App() {
                     <div className="dropdown-item">پروفایل</div>
                     <div className="dropdown-item">تنظیمات</div>
                     <hr className="dropdown-divider" />
+                    
+                    {/* User Role Quick Switcher for testing/demonstration */}
+                    <div className="dropdown-item" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 12px', background: 'var(--bg-base)', borderRadius: '6px', margin: '4px 8px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>نقش کاربر:</span>
+                      <select 
+                        value={userRole} 
+                        onChange={(e) => {
+                          const role = e.target.value as 'manager' | 'support';
+                          setUserRole(role);
+                          if (role !== 'manager' && isSiteAdminMenu(activeMenu)) {
+                            setActiveMenu('submissions');
+                          }
+                          setProfileMenuOpen(false);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '100%', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.8rem', fontFamily: 'var(--font-family)', cursor: 'pointer' }}
+                      >
+                        <option value="support">کارشناس پشتیبانی</option>
+                        <option value="manager">مدیر سیستم (مدیر سایت)</option>
+                      </select>
+                    </div>
+                    
+                    <hr className="dropdown-divider" />
                     <div className="dropdown-item">راهنما</div>
                     <div className="dropdown-item">پشتیبانی</div>
                     <hr className="dropdown-divider" />
                     <div className="dropdown-item package-info">نوع پکیج: تجاری</div>
                     <div className="dropdown-item">تمدید پکیج</div>
-                    <div className="dropdown-item">ارتقاء یا تنزل پکیج</div>
-                    <div className="dropdown-item">شارژ پیامک و حجم</div>
                     <hr className="dropdown-divider" />
-                    <div className="dropdown-item logout">خروج</div>
+                    <div className="dropdown-item logout" onClick={() => { setProfileMenuOpen(false); handleSiteLogout(); }}>خروج</div>
                   </div>
                 </>
               )}
@@ -587,7 +1034,239 @@ function App() {
             </div>
           )}
 
-          {/* Primary View Router simulation */}
+          {/* ==========================================================================
+             Site Admin: Login Gate (shown for any site-* menu if not authenticated)
+             ========================================================================== */}
+          {isSiteAdminMenu(activeMenu) && userRole === 'manager' && !siteToken && (
+            <div className="site-admin-login-wrapper">
+              <form onSubmit={handleSiteLogin} className="site-admin-login-card">
+                <h2 className="site-admin-login-title">ورود به مدیریت وب‌سایت اصلی</h2>
+                <p className="site-admin-login-subtitle">جهت دسترسی به محصولات، سفارشات و آمار زنده سایت وارد شوید</p>
+                {siteLoginError && (
+                  <div className="site-admin-alert">
+                    <AlertCircle size={16} />
+                    <span>{siteLoginError}</span>
+                  </div>
+                )}
+                <div className="site-admin-login-group">
+                  <label>نام کاربری مدیر</label>
+                  <input type="text" value={siteLoginUsername} onChange={(e) => setSiteLoginUsername(e.target.value)} className="site-admin-login-input" placeholder="نام کاربری..." disabled={siteLoginSubmitting} />
+                </div>
+                <div className="site-admin-login-group">
+                  <label>کلمه عبور</label>
+                  <input type="password" value={siteLoginPassword} onChange={(e) => setSiteLoginPassword(e.target.value)} className="site-admin-login-input" placeholder="رمز عبور..." disabled={siteLoginSubmitting} />
+                </div>
+                <button type="submit" className="site-admin-login-btn" disabled={siteLoginSubmitting}>
+                  {siteLoginSubmitting ? 'در حال برقراری ارتباط...' : 'ورود و احراز هویت'}
+                </button>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 24, textAlign: 'center' }}>مشخصات پیش‌فرض: admin / admin123456</p>
+              </form>
+            </div>
+          )}
+
+          {/* ==========================================================================
+             Site Admin: Authenticated Content (per sub-page)
+             ========================================================================== */}
+          {isSiteAdminMenu(activeMenu) && userRole === 'manager' && siteToken && (
+            <div className="dashboard-card">
+              <div className="site-admin-header">
+                <div>
+                  <h2 className="card-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                    {activeMenu === 'site-stats' && 'آمار زنده وب‌سایت'}
+                    {activeMenu === 'site-products' && 'مدیریت محصولات سایت'}
+                    {activeMenu === 'site-orders' && 'سفارشات مشتریان'}
+                    {activeMenu === 'site-tickets' && 'تیکت‌های دریافتی وب‌سایت'}
+                  </h2>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>متصل به پایگاه داده از طریق APIهای امن</p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn-secondary" onClick={loadSiteData} title="بروزرسانی داده‌ها">
+                    <RefreshCw size={16} className={siteLoading ? 'spin' : ''} />
+                    <span>بروزرسانی</span>
+                  </button>
+                  <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleSiteLogout}>
+                    <span>خروج از سایت</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ padding: '0 24px 32px 24px' }}>
+                {siteError && (
+                  <div className="site-admin-alert" style={{ marginBottom: 24 }}>
+                    <AlertTriangle size={18} />
+                    <span>{siteError}</span>
+                  </div>
+                )}
+
+                {/* PAGE: LIVE STATS */}
+                {activeMenu === 'site-stats' && (
+                  <div>
+                    {siteStats ? (
+                      <>
+                        <div className="site-admin-stats-grid">
+                          <div className="stat-card">
+                            <div className="stat-info">
+                              <span className="stat-label">محصولات سایت</span>
+                              <span className="stat-value">{siteStats.productsCount}</span>
+                            </div>
+                            <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)' }}>
+                              <Sliders size={24} />
+                            </div>
+                          </div>
+                          <div className="stat-card">
+                            <div className="stat-info">
+                              <span className="stat-label">سفارشات کل</span>
+                              <span className="stat-value">{siteStats.ordersCount}</span>
+                            </div>
+                            <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>
+                              <Wallet size={24} />
+                            </div>
+                          </div>
+                          <div className="stat-card">
+                            <div className="stat-info">
+                              <span className="stat-label">کل درآمد سایت</span>
+                              <span className="stat-value" style={{ fontSize: '1.25rem' }}>{Number(siteStats.totalRevenue).toLocaleString('fa-IR')} تومان</span>
+                            </div>
+                            <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                              <CheckCircle size={24} />
+                            </div>
+                          </div>
+                          <div className="stat-card">
+                            <div className="stat-info">
+                              <span className="stat-label">تیکت‌های سایت</span>
+                              <span className="stat-value">{siteStats.ticketsCount}</span>
+                            </div>
+                            <div className="stat-icon-wrapper" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' }}>
+                              <MessageSquare size={24} />
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', backgroundColor: 'var(--bg-base)', marginTop: 24 }}>
+                          <h4 style={{ margin: '0 0 20px 0', fontSize: '0.95rem', fontWeight: 700 }}>گزارش وضعیت دیتابیس وب‌سایت</h4>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>در این بخش آمار به صورت لحظه‌ای از دیتابیس SQLite وب‌سایت خوانده می‌شود.</p>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                        <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px auto' }} />
+                        <span>در حال بارگذاری آمار زنده وب‌سایت...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* PAGE: PRODUCTS CRUD */}
+                {activeMenu === 'site-products' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>لیست محصولات سایت</h3>
+                      <button className="btn-extend" onClick={openAddProductModal}><Plus size={16} /><span>افزودن محصول جدید</span></button>
+                    </div>
+                    <div className="table-wrapper">
+                      <table className="data-table">
+                        <thead><tr><th style={{ width: '60px' }}>ردیف</th><th>تصویر</th><th>نام محصول</th><th>نامک (Slug)</th><th>دسته‌بندی</th><th>قیمت (تومان)</th><th>نوع محصول</th><th>موجودی</th><th style={{ width: '150px' }}>عملیات</th></tr></thead>
+                        <tbody>
+                          {siteProducts.length > 0 ? (
+                            siteProducts.map((product, idx) => (
+                              <tr key={product.id}>
+                                <td>{idx + 1}</td>
+                                <td><img src={product.image || '/images/placeholder.png'} alt={product.name} className="product-image-thumbnail" onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder.png'; }} /></td>
+                                <td style={{ fontWeight: 600 }}>{product.name}</td>
+                                <td style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{product.slug}</td>
+                                <td>{product.category?.name || 'فاقد دسته‌بندی'}</td>
+                                <td style={{ fontWeight: 'bold' }}>{Number(product.price).toLocaleString('fa-IR')}</td>
+                                <td>{product.type === 'PHYSICAL' ? 'سخت‌افزار فیزیکی' : 'لایسنس دیجیتال'}</td>
+                                <td>{product.type === 'PHYSICAL' ? (product.inventory !== null ? product.inventory : 0) : 'نامحدود (دیجیتال)'}</td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.8rem' }} onClick={() => openEditProductModal(product)}>ویرایش</button>
+                                    <button className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.8rem', color: '#ef4444', borderColor: '#fca5a5' }} onClick={() => handleDeleteProduct(product.id, product.name)}>حذف</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr><td colSpan={9} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>هیچ محصولی در دیتابیس یافت نشد.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* PAGE: ORDERS */}
+                {activeMenu === 'site-orders' && (
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>لیست سفارشات و فاکتورهای مشتریان</h3>
+                    <div className="table-wrapper">
+                      <table className="data-table">
+                        <thead><tr><th style={{ width: '60px' }}>ردیف</th><th>مشتری</th><th>شماره تماس</th><th>ایمیل</th><th>مبلغ کل (تومان)</th><th>وضعیت پرداخت</th><th>تاریخ ثبت</th></tr></thead>
+                        <tbody>
+                          {siteOrders.length > 0 ? (
+                            siteOrders.map((order, idx) => (
+                              <tr key={order.id} onClick={() => setSelectedSiteOrder(order)} style={{ cursor: 'pointer' }}>
+                                <td>{idx + 1}</td>
+                                <td style={{ fontWeight: 600 }}>{order.customerName}</td>
+                                <td>{order.customerPhone}</td>
+                                <td>{order.customerEmail}</td>
+                                <td style={{ fontWeight: 'bold' }}>{Number(order.totalAmount).toLocaleString('fa-IR')}</td>
+                                <td><span className={`status-pill ${order.isPaid ? 'success' : 'cancel'}`}>{order.isPaid ? 'پرداخت شده' : 'پرداخت نشده'}</span></td>
+                                <td style={{ fontSize: '0.8rem' }}>{new Date(order.createdAt).toLocaleDateString('fa-IR')}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr><td colSpan={7} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>هیچ سفارشی در دیتابیس وجود ندارد.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* PAGE: TICKETS FROM SITE CONTACT FORM */}
+                {activeMenu === 'site-tickets' && (
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>تیکت‌های دریافتی از فرم تماس با ما سایت</h3>
+                    <div className="table-wrapper">
+                      <table className="data-table">
+                        <thead><tr><th style={{ width: '60px' }}>ردیف</th><th>فرستنده</th><th>تلفن تماس</th><th>واحد مربوطه</th><th style={{ width: '40%' }}>متن درخواست</th><th>وضعیت بررسی</th><th>تاریخ ارسال</th><th style={{ width: '120px' }}>عملیات</th></tr></thead>
+                        <tbody>
+                          {siteTickets.length > 0 ? (
+                            siteTickets.map((ticket, idx) => (
+                              <tr key={ticket.id} onClick={() => setSelectedSiteTicket(ticket)} style={{ cursor: 'pointer' }}>
+                                <td>{idx + 1}</td>
+                                <td style={{ fontWeight: 600 }}>{ticket.name}</td>
+                                <td>{ticket.phone}</td>
+                                <td>{ticket.department === 'technical' ? 'پشتیبانی فنی' : ticket.department === 'sales' ? 'فروش' : ticket.department === 'billing' ? 'مالی' : 'مدیریت'}</td>
+                                <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{ticket.message}</td>
+                                <td><span className={`status-pill ${ticket.status}`}>{ticket.status === 'new' ? 'جدید' : ticket.status === 'progress' ? 'در حال بررسی' : ticket.status === 'success' ? 'بسته شده' : 'لغو شده'}</span></td>
+                                <td style={{ fontSize: '0.8rem' }}>{new Date(ticket.createdAt).toLocaleDateString('fa-IR')}</td>
+                                <td>
+                                  <select value={ticket.status} onChange={(e) => { e.stopPropagation(); handleUpdateTicketStatus(ticket.id, e.target.value); }} onClick={(e) => e.stopPropagation()} style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.8rem', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontFamily: 'var(--font-family)', cursor: 'pointer' }}>
+                                    <option value="new">جدید</option>
+                                    <option value="progress">بررسی</option>
+                                    <option value="success">بسته شد</option>
+                                    <option value="cancel">لغو شد</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr><td colSpan={8} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>هیچ تیکتی از فرم تماس با ما سایت دریافت نشده است.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {/* ==========================================================================
+             View 2: Support Ticket Submissions (Original Dashboard functionality)
+             ========================================================================== */}
           {activeMenu === 'submissions' && (
             <div className="dashboard-card">
               <div className="card-header">
@@ -626,7 +1305,7 @@ function App() {
                   </button>
                 </div>
 
-                {/* Sub Tab Content: Search & Table Filter (Active in screenshot) */}
+                {/* Sub Tab Content: Search & Table Filter */}
                 {activeTab === 'search' && (
                   <div className="controls-row">
                     <div className="search-box">
@@ -651,9 +1330,6 @@ function App() {
                     <div className="filter-actions">
                       <button className="btn-secondary btn-icon-only" onClick={() => window.print()} title="چاپ گزارش">
                         <Printer size={16} />
-                      </button>
-                      <button className="btn-secondary btn-icon-only" title="تنظیمات">
-                        <Settings size={16} />
                       </button>
                     </div>
                   </div>
@@ -1157,7 +1833,7 @@ function App() {
           )}
 
           {/* Fallback view simulation for other menu links */}
-          {activeMenu !== 'submissions' && activeMenu !== 'archive' && (
+          {activeMenu !== 'submissions' && activeMenu !== 'archive' && !isSiteAdminMenu(activeMenu) && (
             <div className="dashboard-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
               <HelpCircle size={48} style={{ color: 'var(--primary)', marginBottom: '16px' }} />
               <h2 className="card-title" style={{ marginBottom: '12px' }}>بخش {menuItems.find(m => m.id === activeMenu)?.label}</h2>
@@ -1276,7 +1952,7 @@ function App() {
               </span>
             </div>
 
-            {/* Audit Log / History Logging */}
+            {/* Audit Log */}
             <div style={{ marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
               <span className="detail-label" style={{ display: 'block', marginBottom: '16px' }}>تاریخچه ثبت لاگ تغییرات (Audit Log)</span>
               
@@ -1342,6 +2018,7 @@ function App() {
           </div>
         </div>
       </div>
+      
       {/* Archive Confirmation Modal */}
       <div className={`modal-overlay ${showArchiveConfirm ? 'open' : ''}`} onClick={() => setShowArchiveConfirm(false)}>
         <div className="modal-content delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
@@ -1357,6 +2034,272 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* ==========================================================
+         NEW MODAL: ADD / EDIT PRODUCT MODAL (SITE ADMIN)
+         ========================================================== */}
+      {showProductModal && (
+        <div className="modal-overlay open" onClick={() => setShowProductModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {editingProduct ? `ویرایش محصول: ${editingProduct.name}` : 'افزودن محصول جدید به وب‌سایت'}
+              </h3>
+              <button className="close-btn" onClick={() => setShowProductModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxHeight: '70vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>نام محصول <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className="modal-input" 
+                    value={productFormData.name}
+                    onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>نامک انگلیسی (Slug) <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className="modal-input" 
+                    value={productFormData.slug}
+                    onChange={(e) => setProductFormData({ ...productFormData, slug: e.target.value })}
+                    placeholder="مثال: super-modem-4g"
+                    style={{ direction: 'ltr', textAlign: 'left' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>دسته‌بندی محصول <span style={{ color: '#ef4444' }}>*</span></label>
+                  <select 
+                    className="modal-select" 
+                    value={productFormData.categoryId}
+                    onChange={(e) => setProductFormData({ ...productFormData, categoryId: e.target.value })}
+                    required
+                  >
+                    <option value="">انتخاب دسته‌بندی...</option>
+                    {siteCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>قیمت محصول (تومان) <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="number" 
+                    className="modal-input" 
+                    value={productFormData.price}
+                    onChange={(e) => setProductFormData({ ...productFormData, price: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>آدرس تصویر محصول</label>
+                  <input 
+                    type="text" 
+                    className="modal-input" 
+                    value={productFormData.image}
+                    onChange={(e) => setProductFormData({ ...productFormData, image: e.target.value })}
+                    placeholder="مثال: /images/modem.jpg"
+                    style={{ direction: 'ltr', textAlign: 'left' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>نوع محصول</label>
+                  <select 
+                    className="modal-select" 
+                    value={productFormData.type}
+                    onChange={(e) => setProductFormData({ ...productFormData, type: e.target.value })}
+                  >
+                    <option value="PHYSICAL">سخت‌افزار فیزیکی</option>
+                    <option value="DIGITAL">لایسنس / فایل دیجیتال</option>
+                  </select>
+                </div>
+
+                {productFormData.type === 'PHYSICAL' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>تعداد موجودی انبار</label>
+                    <input 
+                      type="number" 
+                      className="modal-input" 
+                      value={productFormData.inventory}
+                      onChange={(e) => setProductFormData({ ...productFormData, inventory: e.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>لینک دانلود فایل لایسنس</label>
+                    <input 
+                      type="text" 
+                      className="modal-input" 
+                      value={productFormData.downloadUrl}
+                      onChange={(e) => setProductFormData({ ...productFormData, downloadUrl: e.target.value })}
+                      placeholder="مثال: /downloads/license.zip"
+                      style={{ direction: 'ltr', textAlign: 'left' }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>توضیحات کوتاه معرفی محصول <span style={{ color: '#ef4444' }}>*</span></label>
+                  <textarea 
+                    rows={3}
+                    className="modal-textarea" 
+                    value={productFormData.description}
+                    onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>مشخصات فنی محصول (فرمت JSON معتبر)</label>
+                  <textarea 
+                    rows={4}
+                    className="modal-textarea" 
+                    value={productFormData.specs}
+                    onChange={(e) => setProductFormData({ ...productFormData, specs: e.target.value })}
+                    style={{ direction: 'ltr', textAlign: 'left', fontFamily: 'monospace' }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={() => setShowProductModal(false)}>انصراف</button>
+                <button type="submit" className="btn-extend">ذخیره تغییرات محصول</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================
+         NEW MODAL: VIEW SITE ORDER DETAILS (SITE ADMIN)
+         ========================================================== */}
+      {selectedSiteOrder && (
+        <div className="modal-overlay open" onClick={() => setSelectedSiteOrder(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">جزئیات سفارش #{selectedSiteOrder.id.substring(0, 8)}</h3>
+              <button className="close-btn" onClick={() => setSelectedSiteOrder(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+                <div><strong>نام مشتری:</strong> {selectedSiteOrder.customerName}</div>
+                <div><strong>تلفن تماس:</strong> {selectedSiteOrder.customerPhone}</div>
+                <div><strong>ایمیل مشتری:</strong> {selectedSiteOrder.customerEmail}</div>
+                <div><strong>مبلغ کل:</strong> {Number(selectedSiteOrder.totalAmount).toLocaleString('fa-IR')} تومان</div>
+                <div style={{ gridColumn: 'span 2' }}><strong>آدرس ارسال:</strong> {selectedSiteOrder.shippingAddress || 'تحویل دیجیتالی (ایمیل)'}</div>
+                <div style={{ gridColumn: 'span 2', marginTop: 8 }}>
+                  <strong>وضعیت فاکتور: </strong> 
+                  <span className={`status-pill ${selectedSiteOrder.isPaid ? 'success' : 'cancel'}`}>
+                    {selectedSiteOrder.isPaid ? 'پرداخت شده' : 'پرداخت نشده'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 style={{ margin: '8px 0 12px 0', fontSize: '0.9rem', fontWeight: 700 }}>اقلام سبد خرید</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedSiteOrder.items?.map((item: any) => (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: 'var(--bg-base)', borderRadius: '6px' }}>
+                      <div>{item.product?.name} (x{item.quantity})</div>
+                      <div style={{ fontWeight: 'bold' }}>{Number(item.price * item.quantity).toLocaleString('fa-IR')} تومان</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setSelectedSiteOrder(null)}>بستن پنجره</button>
+              <button 
+                className="btn-extend" 
+                onClick={() => handleUpdateOrderStatus(selectedSiteOrder.id, !selectedSiteOrder.isPaid)}
+                style={{ backgroundColor: selectedSiteOrder.isPaid ? '#ef4444' : '#10b981' }}
+              >
+                {selectedSiteOrder.isPaid ? 'تغییر به پرداخت نشده' : 'تغییر به پرداخت شده'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================
+         NEW MODAL: VIEW SITE CONTACT TICKET DETAILS (SITE ADMIN)
+         ========================================================== */}
+      {selectedSiteTicket && (
+        <div className="modal-overlay open" onClick={() => setSelectedSiteTicket(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">مشاهده پیام تماس با ما</h3>
+              <button className="close-btn" onClick={() => setSelectedSiteTicket(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
+                <div><strong>فرستنده پیام:</strong> {selectedSiteTicket.name}</div>
+                <div><strong>شماره تماس:</strong> {selectedSiteTicket.phone}</div>
+                <div>
+                  <strong>واحد مربوطه:</strong> {' '}
+                  {selectedSiteTicket.department === 'technical' ? 'پشتیبانی فنی سخت‌افزار و شبکه' :
+                   selectedSiteTicket.department === 'sales' ? 'واحد فروش و استعلام قیمت' :
+                   selectedSiteTicket.department === 'billing' ? 'واحد مالی و فاکتورها' : 'ارتباط مستقیم با مدیریت'}
+                </div>
+                <div><strong>تاریخ ارسال:</strong> {new Date(selectedSiteTicket.createdAt).toLocaleDateString('fa-IR')}</div>
+              </div>
+
+              <div>
+                <strong style={{ display: 'block', marginBottom: '8px' }}>متن پیام فرستاده شده:</strong>
+                <div style={{ padding: 16, backgroundColor: 'var(--bg-base)', borderRadius: 8, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {selectedSiteTicket.message}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <strong>بروزرسانی وضعیت بررسی تیکت:</strong>
+                <div style={{ display: 'flex', gap: '8px', marginTop: 8 }}>
+                  {['new', 'progress', 'success', 'cancel'].map(s => (
+                    <button 
+                      key={s}
+                      type="button"
+                      className={`btn-secondary ${selectedSiteTicket.status === s ? 'active' : ''}`}
+                      onClick={() => handleUpdateTicketStatus(selectedSiteTicket.id, s)}
+                      style={{ 
+                        flex: 1, 
+                        justifyContent: 'center',
+                        backgroundColor: selectedSiteTicket.status === s ? 'var(--primary)' : 'transparent',
+                        color: selectedSiteTicket.status === s ? 'white' : 'var(--text-main)'
+                      }}
+                    >
+                      {s === 'new' ? 'جدید' : s === 'progress' ? 'بررسی' : s === 'success' ? 'انجام شد' : 'لغو شده'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setSelectedSiteTicket(null)}>بستن پنجره</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
