@@ -228,6 +228,28 @@ function App() {
   const [siteCategories, setSiteCategories] = useState<any[]>([]);
   const [siteOrders, setSiteOrders] = useState<any[]>([]);
   const [siteTickets, setSiteTickets] = useState<any[]>([]);
+  interface DashboardBanner {
+    id: number;
+    image: string;
+    link: string;
+    title: string;
+  }
+
+  const [siteGeneralSettings, setSiteGeneralSettings] = useState<{
+    showBanners: boolean;
+    showFeatures: boolean;
+    showCategories: boolean;
+    showProducts: boolean;
+    showBlog: boolean;
+    banners: DashboardBanner[];
+  }>({
+    showBanners: true,
+    showFeatures: true,
+    showCategories: true,
+    showProducts: true,
+    showBlog: true,
+    banners: []
+  });
   
   const [siteAdminActiveTab, setSiteAdminActiveTab] = useState<'stats' | 'products' | 'orders' | 'tickets'>('stats');
   const [siteLoading, setSiteLoading] = useState(false);
@@ -535,6 +557,15 @@ function App() {
       const ticketData = await ticketRes.json();
       if (ticketData.success) setSiteTickets(ticketData.tickets);
 
+      // 5. Fetch General Settings
+      const settingsRes = await fetch('http://localhost:3000/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      const settingsData = await settingsRes.json();
+      if (settingsData.success) {
+        setSiteGeneralSettings(settingsData.settings);
+      }
+
     } catch (err: any) {
       console.error('Error loading site admin data:', err);
       setSiteError('خطا در اتصال به سرور سایت. مطمئن شوید سرور سایت روی پورت ۳۰۰۰ در حال اجراست.');
@@ -745,6 +776,167 @@ function App() {
     }
   };
 
+  // Site settings update
+  const handleSaveAllSiteSettings = async (updatedSettings: any) => {
+    setSiteGeneralSettings(updatedSettings);
+    try {
+      const response = await fetch('http://localhost:3000/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${siteToken}`
+        },
+        body: JSON.stringify(updatedSettings)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'خطایی در بروزرسانی تنظیمات رخ داد.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'خطایی در ثبت تنظیمات رخ داد.');
+      loadSiteData();
+    }
+  };
+
+  const handleUpdateSiteSettings = async (key: string, value: any) => {
+    const updatedSettings = {
+      ...siteGeneralSettings,
+      [key]: value
+    };
+    handleSaveAllSiteSettings(updatedSettings);
+  };
+
+  // Client-side HTML5 Canvas cropping and optimization
+  const cropAndUploadImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('امکان ایجاد ابزار برش تصویر وجود ندارد.'));
+          return;
+        }
+
+        const srcRatio = img.width / img.height;
+        const targetRatio = 1200 / 400;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+
+        if (srcRatio > targetRatio) {
+          sw = img.height * targetRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / targetRatio;
+          sy = (img.height - sh) / 2;
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1200, 400);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('خطا در فشرده‌سازی تصویر.'));
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append('file', blob, file.name);
+
+          setSiteLoading(true);
+          fetch('http://localhost:3000/api/admin/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${siteToken}`
+            },
+            body: formData
+          })
+            .then(res => res.json())
+            .then(data => {
+              setSiteLoading(false);
+              if (data.success && data.imageUrl) {
+                resolve(data.imageUrl);
+              } else {
+                reject(new Error(data.error || 'خطا در بارگذاری فایل.'));
+              }
+            })
+            .catch(err => {
+              setSiteLoading(false);
+              reject(err);
+            });
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => {
+        reject(new Error('امکان خواندن فایل تصویر وجود ندارد.'));
+      };
+    });
+  };
+
+  const handleAddBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    if (siteGeneralSettings.banners.length >= 5) {
+      alert('حداکثر ظرفیت اسلایدر ۵ بنر می‌باشد. ابتدا یکی را حذف کنید.');
+      return;
+    }
+    const file = e.target.files[0];
+    try {
+      const imageUrl = await cropAndUploadImage(file);
+      const newBanner = {
+        id: Date.now(),
+        image: imageUrl,
+        link: '/products',
+        title: 'بنر جدید اسلایدر'
+      };
+      const updatedBanners = [...(siteGeneralSettings.banners || []), newBanner];
+      handleSaveAllSiteSettings({
+        ...siteGeneralSettings,
+        banners: updatedBanners
+      });
+    } catch (err: any) {
+      alert(err.message || 'خطا در آپلود بنر.');
+    }
+  };
+
+  const handleUpdateBannerField = (bannerId: number, field: 'link' | 'title', value: string) => {
+    const updatedBanners = (siteGeneralSettings.banners || []).map(b => 
+      b.id === bannerId ? { ...b, [field]: value } : b
+    );
+    setSiteGeneralSettings(prev => ({
+      ...prev,
+      banners: updatedBanners
+    }));
+  };
+
+  const handleSaveBannerChanges = () => {
+    handleSaveAllSiteSettings(siteGeneralSettings);
+    alert('تغییرات بنرها با موفقیت ذخیره شد.');
+  };
+
+  const handleDeleteBanner = (bannerId: number) => {
+    if (!window.confirm('آیا از حذف این بنر مطمئن هستید؟')) return;
+    const updatedBanners = (siteGeneralSettings.banners || []).filter(b => b.id !== bannerId);
+    handleSaveAllSiteSettings({
+      ...siteGeneralSettings,
+      banners: updatedBanners
+    });
+  };
+
+  const handleReplaceBannerImage = async (bannerId: number, file: File) => {
+    try {
+      const imageUrl = await cropAndUploadImage(file);
+      const updatedBanners = (siteGeneralSettings.banners || []).map(b => 
+        b.id === bannerId ? { ...b, image: imageUrl } : b
+      );
+      handleSaveAllSiteSettings({
+        ...siteGeneralSettings,
+        banners: updatedBanners
+      });
+    } catch (err: any) {
+      alert(err.message || 'خطا در جایگزینی تصویر بنر.');
+    }
+  };
+
   const openAddProductModal = () => {
     setEditingProduct(null);
     setProductFormData({
@@ -811,6 +1003,7 @@ function App() {
         label: 'مدیریت سایت',
         icon: Sliders,
         children: [
+          { id: 'site-settings', label: 'تنظیمات عمومی', icon: Settings },
           { id: 'site-stats', label: 'آمار زنده', icon: Activity },
           { id: 'site-products', label: 'محصولات سایت', icon: Package },
           { id: 'site-orders', label: 'سفارشات مشتریان', icon: ShoppingCart },
@@ -1084,6 +1277,7 @@ function App() {
               <div className="site-admin-header">
                 <div>
                   <h2 className="card-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                    {activeMenu === 'site-settings' && 'تنظیمات عمومی وب‌سایت'}
                     {activeMenu === 'site-stats' && 'آمار زنده وب‌سایت'}
                     {activeMenu === 'site-products' && 'مدیریت محصولات سایت'}
                     {activeMenu === 'site-orders' && 'سفارشات مشتریان'}
@@ -1104,6 +1298,214 @@ function App() {
                   <div className="site-admin-alert" style={{ marginBottom: 24 }}>
                     <AlertTriangle size={18} />
                     <span>{siteError}</span>
+                  </div>
+                )}
+
+                {/* PAGE: GENERAL SETTINGS */}
+                {activeMenu === 'site-settings' && (
+                  <div className="settings-container">
+                    <div className="settings-section-card">
+                      <h3 className="settings-section-title">تنظیمات نمایش بخش‌های صفحه اصلی وب‌سایت</h3>
+                      <p className="settings-section-desc">
+                        با غیرفعال کردن هر یک از بخش‌های زیر، آن بخش به صورت آنی در صفحه اول وب‌سایت سیدی آی‌تی مخفی خواهد شد.
+                      </p>
+                      
+                      <div className="settings-switches-list">
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
+                            <span className="setting-label">نمایش بنرهای اسلایدر صفحه اصلی</span>
+                            <span className="setting-subdesc">کنترل نمایش اسلایدر بنر در بالای صفحه اصلی</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showBanners} 
+                              onChange={(e) => handleUpdateSiteSettings('showBanners', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
+                            <span className="setting-label">نمایش ویژگی‌های کلیدی و نمادهای اعتماد</span>
+                            <span className="setting-subdesc">کنترل نمایش بخش سه ویژگی ضمانت، پشتیبانی و ارسال در صفحه اصلی</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showFeatures} 
+                              onChange={(e) => handleUpdateSiteSettings('showFeatures', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
+                            <span className="setting-label">نمایش دسته‌بندی‌های اصلی</span>
+                            <span className="setting-subdesc">کنترل نمایش بخش میانبر دسته‌بندی‌های سخت‌افزار و نرم‌افزار</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showCategories} 
+                              onChange={(e) => handleUpdateSiteSettings('showCategories', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
+                            <span className="setting-label">نمایش محصولات برگزیده</span>
+                            <span className="setting-subdesc">کنترل نمایش بخش معرفی محصولات برتر و برگزیده</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showProducts} 
+                              onChange={(e) => handleUpdateSiteSettings('showProducts', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
+                            <span className="setting-label">نمایش آخرین مطالب وبلاگ آموزشی</span>
+                            <span className="setting-subdesc">کنترل نمایش آخرین مقالات منتشر شده در وبلاگ</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showBlog} 
+                              onChange={(e) => handleUpdateSiteSettings('showBlog', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PAGE: BANNER MANAGEMENT CARD */}
+                    {siteGeneralSettings.showBanners && (
+                      <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                        <h3 className="settings-section-title">مدیریت بنرهای اسلایدر ({siteGeneralSettings.banners?.length || 0} از ۵)</h3>
+                        <p className="settings-section-desc">
+                          بنرهای اسلایدر بالای صفحه اصلی را مدیریت کنید. شما می‌توانید حداکثر ۵ بنر فعال داشته باشید.
+                        </p>
+                        
+                        {/* Notice for aspect ratio & auto crop */}
+                        <div className="settings-notice-box" style={{ marginBottom: '24px', padding: '16px', borderRadius: 'var(--border-radius-md)', backgroundColor: 'var(--bg-base)', borderRight: '4px solid var(--primary)', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                          <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>📌 توجه بسیار مهم برای اسلایدر:</strong>
+                          ابعاد استاندارد تصاویر بنر اسلایدر <strong>۱۲۰۰ در ۴۰۰ پیکسل</strong> و حداکثر حجم مجاز <strong>۵۰۰ کیلوبایت</strong> می‌باشد. 
+                          در صورتی که تصویر انتخابی شما ابعادی غیر از این داشته باشد، سیستم به صورت خودکار آن را به نسبت ۳:۱ کراپ (برش) کرده و جهت حفظ سرعت لود سایت بهینه‌سازی می‌کند.
+                        </div>
+
+                        <div className="banners-grid">
+                          {(siteGeneralSettings.banners || []).map((banner) => (
+                            <div key={banner.id} className="banner-edit-card" style={{ display: 'flex', gap: '20px', padding: '20px', border: '1px solid var(--border)', borderRadius: 'var(--border-radius-md)', marginBottom: '16px', backgroundColor: 'var(--bg-base)' }}>
+                              
+                              {/* Thumbnail preview with change image button */}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '180px', flexShrink: 0 }}>
+                                <div style={{ width: '100%', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+                                  <img 
+                                    src={`http://localhost:3000${banner.image}`} 
+                                    alt={banner.title} 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = banner.image;
+                                    }}
+                                  />
+                                </div>
+                                <label className="btn-secondary" style={{ width: '100%', fontSize: '0.75rem', padding: '6px 12px', textAlign: 'center', cursor: 'pointer', display: 'block', margin: 0 }}>
+                                  <span>تغییر تصویر</span>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files.length > 0) {
+                                        handleReplaceBannerImage(banner.id, e.target.files[0]);
+                                      }
+                                    }} 
+                                    style={{ display: 'none' }} 
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Form fields */}
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                  <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>عنوان بنر (Alt)</label>
+                                    <input 
+                                      type="text" 
+                                      value={banner.title} 
+                                      onChange={(e) => handleUpdateBannerField(banner.id, 'title', e.target.value)} 
+                                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem' }} 
+                                      placeholder="مثلاً: فروشگاه آنلاین سیدی آی‌تی"
+                                    />
+                                  </div>
+                                  <div style={{ flex: '2 1 300px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>لینک پیوند بنر</label>
+                                    <input 
+                                      type="text" 
+                                      value={banner.link} 
+                                      onChange={(e) => handleUpdateBannerField(banner.id, 'link', e.target.value)} 
+                                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem', direction: 'ltr', textAlign: 'left' }} 
+                                      placeholder="/products"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => handleDeleteBanner(banner.id)} 
+                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '4px 8px' }}
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>حذف این بنر</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Save link changes & Add new banner buttons */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                          <div>
+                            {siteGeneralSettings.banners?.length < 5 ? (
+                              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', backgroundColor: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' }}>
+                                <Plus size={16} />
+                                <span>افزودن بنر جدید</span>
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  onChange={handleAddBanner} 
+                                  style={{ display: 'none' }} 
+                                />
+                              </label>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ظرفیت اسلایدر تکمیل است (حداکثر ۵ بنر)</span>
+                            )}
+                          </div>
+                          
+                          {siteGeneralSettings.banners?.length > 0 && (
+                            <button 
+                              type="button" 
+                              className="btn-extend" 
+                              style={{ backgroundColor: 'var(--primary)', fontSize: '0.85rem', padding: '8px 20px' }} 
+                              onClick={handleSaveBannerChanges}
+                            >
+                              ذخیره تغییرات بنرها
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
