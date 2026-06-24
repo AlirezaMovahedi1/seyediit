@@ -869,7 +869,18 @@ function App() {
       <aside className={`sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-icon">
-            <Send size={22} style={{ transform: 'rotate(180deg)' }} />
+            <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" width="30" height="36">
+              {/* Top-Left Triangle */}
+              <polygon points="18,28 49,10 49,46" fill="#2563eb" />
+              {/* Top-Right Triangle */}
+              <polygon points="82,28 51,10 51,46" fill="#2563eb" />
+              {/* Middle Diagonal Parallelogram */}
+              <polygon points="18,30 82,67 82,93 18,56" fill="#1e3a8a" />
+              {/* Bottom-Left Triangle */}
+              <polygon points="18,94 49,112 49,76" fill="#2563eb" />
+              {/* Bottom-Right Triangle */}
+              <polygon points="82,95 51,113 51,77" fill="#2563eb" />
+            </svg>
           </div>
           <span className="logo-text">سیدی آی تی</span>
         </div>

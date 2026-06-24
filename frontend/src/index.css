@@ -11,17 +11,17 @@
   --border-radius-full: 9999px;
   
   /* Light Theme Variables */
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-rgb: 99, 102, 241;
-  --secondary: #a855f7;
-  --secondary-hover: #9333ea;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-rgb: 37, 99, 235;
+  --secondary: #1e3a8a;
+  --secondary-hover: #172554;
   --bg-base: #f8fafc;
   --bg-surface: #ffffff;
   --bg-sidebar: #ffffff;
-  --bg-sidebar-active: #f1f5f9;
+  --bg-sidebar-active: #eff6ff;
   --border: #e2e8f0;
-  --border-focus: #cbd5e1;
+  --border-focus: #bfdbfe;
   --text-main: #0f172a;
   --text-muted: #64748b;
   --text-inverse: #ffffff;
@@ -32,7 +32,7 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   
   /* Status Colors (Light Theme) */
-  --status-new-bg: rgba(59, 130, 246, 0.1);
+  --status-new-bg: rgba(37, 99, 235, 0.1);
   --status-new-text: #2563eb;
   
   --status-progress-bg: rgba(245, 158, 11, 0.1);
@@ -56,7 +56,7 @@
   --priority-critical-text: #ef4444;
 
   /* Selection colors */
-  --selected-row-bg: rgba(99, 102, 241, 0.05);
+  --selected-row-bg: rgba(37, 99, 235, 0.05);
 }
 
 [data-theme="dark"] {
@@ -167,13 +167,9 @@ html, body {
 .logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border-radius: var(--border-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  box-shadow: 0 4px 10px rgba(var(--primary-rgb), 0.3);
   flex-shrink: 0;
 }
 
