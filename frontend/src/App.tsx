@@ -583,6 +583,7 @@ function App() {
 
       localStorage.setItem('site_admin_token', data.token);
       setSiteToken(data.token);
+      setUserRole('manager');
       setSiteLoginPassword('');
     } catch (err: any) {
       setSiteLoginError(err.message || 'خطایی در ورود رخ داده است.');
@@ -598,6 +599,7 @@ function App() {
     setSiteProducts([]);
     setSiteOrders([]);
     setSiteTickets([]);
+    setUserRole('support');
     fetch('http://localhost:3000/api/admin/auth/logout', { method: 'POST' }).catch(() => {});
   };
 
@@ -826,6 +828,35 @@ function App() {
     return baseItems;
   }, [userRole]);
 
+  if (!siteToken) {
+    return (
+      <div className="site-admin-login-wrapper" style={{ minHeight: '100vh', width: '100%', backgroundColor: 'var(--bg-base)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <form onSubmit={handleSiteLogin} className="site-admin-login-card">
+          <h2 className="site-admin-login-title">ورود به سامانه مدیریت سیدی آیتی</h2>
+          <p className="site-admin-login-subtitle">جهت دسترسی به داشبورد و مدیریت سیستم وارد شوید</p>
+          {siteLoginError && (
+            <div className="site-admin-alert" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', marginBottom: 20 }}>
+              <AlertCircle size={16} />
+              <span>{siteLoginError}</span>
+            </div>
+          )}
+          <div className="site-admin-login-group">
+            <label>نام کاربری</label>
+            <input type="text" value={siteLoginUsername} onChange={(e) => setSiteLoginUsername(e.target.value)} className="site-admin-login-input" placeholder="نام کاربری..." disabled={siteLoginSubmitting} />
+          </div>
+          <div className="site-admin-login-group">
+            <label>کلمه عبور</label>
+            <input type="password" value={siteLoginPassword} onChange={(e) => setSiteLoginPassword(e.target.value)} className="site-admin-login-input" placeholder="رمز عبور..." disabled={siteLoginSubmitting} />
+          </div>
+          <button type="submit" className="site-admin-login-btn" disabled={siteLoginSubmitting}>
+            {siteLoginSubmitting ? 'در حال برقراری ارتباط...' : 'ورود و احراز هویت'}
+          </button>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 24, textAlign: 'center' }}>مشخصات پیش‌فرض: admin / admin123456</p>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Mobile Sidebar Overlay */}
@@ -1035,39 +1066,9 @@ function App() {
           )}
 
           {/* ==========================================================================
-             Site Admin: Login Gate (shown for any site-* menu if not authenticated)
-             ========================================================================== */}
-          {isSiteAdminMenu(activeMenu) && userRole === 'manager' && !siteToken && (
-            <div className="site-admin-login-wrapper">
-              <form onSubmit={handleSiteLogin} className="site-admin-login-card">
-                <h2 className="site-admin-login-title">ورود به مدیریت وب‌سایت اصلی</h2>
-                <p className="site-admin-login-subtitle">جهت دسترسی به محصولات، سفارشات و آمار زنده سایت وارد شوید</p>
-                {siteLoginError && (
-                  <div className="site-admin-alert">
-                    <AlertCircle size={16} />
-                    <span>{siteLoginError}</span>
-                  </div>
-                )}
-                <div className="site-admin-login-group">
-                  <label>نام کاربری مدیر</label>
-                  <input type="text" value={siteLoginUsername} onChange={(e) => setSiteLoginUsername(e.target.value)} className="site-admin-login-input" placeholder="نام کاربری..." disabled={siteLoginSubmitting} />
-                </div>
-                <div className="site-admin-login-group">
-                  <label>کلمه عبور</label>
-                  <input type="password" value={siteLoginPassword} onChange={(e) => setSiteLoginPassword(e.target.value)} className="site-admin-login-input" placeholder="رمز عبور..." disabled={siteLoginSubmitting} />
-                </div>
-                <button type="submit" className="site-admin-login-btn" disabled={siteLoginSubmitting}>
-                  {siteLoginSubmitting ? 'در حال برقراری ارتباط...' : 'ورود و احراز هویت'}
-                </button>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 24, textAlign: 'center' }}>مشخصات پیش‌فرض: admin / admin123456</p>
-              </form>
-            </div>
-          )}
-
-          {/* ==========================================================================
              Site Admin: Authenticated Content (per sub-page)
              ========================================================================== */}
-          {isSiteAdminMenu(activeMenu) && userRole === 'manager' && siteToken && (
+          {isSiteAdminMenu(activeMenu) && userRole === 'manager' && (
             <div className="dashboard-card">
               <div className="site-admin-header">
                 <div>
@@ -1083,9 +1084,6 @@ function App() {
                   <button className="btn-secondary" onClick={loadSiteData} title="بروزرسانی داده‌ها">
                     <RefreshCw size={16} className={siteLoading ? 'spin' : ''} />
                     <span>بروزرسانی</span>
-                  </button>
-                  <button className="btn-secondary" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleSiteLogout}>
-                    <span>خروج از سایت</span>
                   </button>
                 </div>
               </div>
@@ -1170,7 +1168,17 @@ function App() {
                             siteProducts.map((product, idx) => (
                               <tr key={product.id}>
                                 <td>{idx + 1}</td>
-                                <td><img src={product.image || '/images/placeholder.png'} alt={product.name} className="product-image-thumbnail" onError={(e) => { (e.target as HTMLImageElement).src = '/images/placeholder.png'; }} /></td>
+                                <td>
+                                  <img 
+                                    src={product.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%23cccccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'} 
+                                    alt={product.name} 
+                                    className="product-image-thumbnail" 
+                                    onError={(e) => { 
+                                      e.currentTarget.onerror = null; 
+                                      e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%23cccccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'; 
+                                    }} 
+                                  />
+                                </td>
                                 <td style={{ fontWeight: 600 }}>{product.name}</td>
                                 <td style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>{product.slug}</td>
                                 <td>{product.category?.name || 'فاقد دسته‌بندی'}</td>
