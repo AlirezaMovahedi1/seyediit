@@ -250,10 +250,30 @@ function App() {
     showBlog: true,
     banners: []
   });
-  
-  const [siteAdminActiveTab, setSiteAdminActiveTab] = useState<'stats' | 'products' | 'orders' | 'tickets'>('stats');
   const [siteLoading, setSiteLoading] = useState(false);
   const [siteError, setSiteError] = useState<string | null>(null);
+
+  // Global custom confirmation modal state and helper
+  const [siteConfirmModal, setSiteConfirmModal] = useState<{
+    open: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const showSiteConfirm = (message: string, onConfirm: () => void) => {
+    setSiteConfirmModal({
+      open: true,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setSiteConfirmModal(prev => ({ ...prev, open: false }));
+      }
+    });
+  };
 
   // Site Login inputs
   const [siteLoginUsername, setSiteLoginUsername] = useState('admin');
@@ -274,7 +294,10 @@ function App() {
     type: 'PHYSICAL',
     categoryId: '',
     downloadUrl: '',
-    inventory: ''
+    inventory: '',
+    isSpecialOffer: false,
+    specialPrice: '',
+    specialOfferEnd: ''
   });
 
   // Selected Order / Ticket view modal states
@@ -387,10 +410,13 @@ function App() {
 
   const handleDeleteArchivedSelected = () => {
     if (archiveSelectedRowIds.length === 0) return;
-    if (window.confirm(`آیا از حذف دائمی ${archiveSelectedRowIds.length} تیکت بایگانی شده مطمئن هستید؟`)) {
-      setTickets(tickets.filter(t => !archiveSelectedRowIds.includes(t.id)));
-      setArchiveSelectedRowIds([]);
-    }
+    showSiteConfirm(
+      `آیا از حذف دائمی ${archiveSelectedRowIds.length} تیکت بایگانی شده مطمئن هستید؟`,
+      () => {
+        setTickets(tickets.filter(t => !archiveSelectedRowIds.includes(t.id)));
+        setArchiveSelectedRowIds([]);
+      }
+    );
   };
 
   // Filtering Logic for local tickets
@@ -637,7 +663,7 @@ function App() {
   // Product save operation
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { name, slug, description, price, image, type, categoryId, downloadUrl, inventory, specs } = productFormData;
+    const { name, slug, description, price, image, type, categoryId, downloadUrl, inventory, specs, isSpecialOffer, specialPrice, specialOfferEnd } = productFormData;
     
     if (!name || !slug || !description || !price || !categoryId) {
       alert('لطفاً تمامی فیلدهای الزامی محصول را پر کنید.');
@@ -668,7 +694,10 @@ function App() {
         categoryId,
         downloadUrl: type === 'DIGITAL' ? downloadUrl : null,
         inventory: type === 'PHYSICAL' ? parseInt(inventory) : null,
-        specs: specs || '{}'
+        specs: specs || '{}',
+        isSpecialOffer: !!isSpecialOffer,
+        specialPrice: isSpecialOffer && specialPrice ? parseFloat(specialPrice) : null,
+        specialOfferEnd: isSpecialOffer && specialOfferEnd ? new Date(specialOfferEnd).toISOString() : null
       };
 
       const response = await fetch('http://localhost:3000/api/admin/products', {
@@ -698,28 +727,30 @@ function App() {
 
   // Product delete operation
   const handleDeleteProduct = async (id: string, name: string) => {
-    if (!window.confirm(`آیا از حذف محصول "${name}" مطمئن هستید؟`)) {
-      return;
-    }
-    setSiteLoading(true);
-    try {
-      const response = await fetch(`http://localhost:3000/api/admin/products?id=${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${siteToken}`
+    showSiteConfirm(
+      `آیا از حذف محصول "${name}" مطمئن هستید؟`,
+      async () => {
+        setSiteLoading(true);
+        try {
+          const response = await fetch(`http://localhost:3000/api/admin/products?id=${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${siteToken}`
+            }
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'خطایی در حذف محصول رخ داد.');
+          }
+          alert('محصول با موفقیت حذف شد.');
+          loadSiteData();
+        } catch (err: any) {
+          alert(err.message || 'خطایی در حذف رخ داد.');
+        } finally {
+          setSiteLoading(false);
         }
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'خطایی در حذف محصول رخ داد.');
       }
-      alert('محصول با موفقیت حذف شد.');
-      loadSiteData();
-    } catch (err: any) {
-      alert(err.message || 'خطایی در حذف رخ داد.');
-    } finally {
-      setSiteLoading(false);
-    }
+    );
   };
 
   // Order status update
@@ -914,12 +945,16 @@ function App() {
   };
 
   const handleDeleteBanner = (bannerId: number) => {
-    if (!window.confirm('آیا از حذف این بنر مطمئن هستید؟')) return;
-    const updatedBanners = (siteGeneralSettings.banners || []).filter(b => b.id !== bannerId);
-    handleSaveAllSiteSettings({
-      ...siteGeneralSettings,
-      banners: updatedBanners
-    });
+    showSiteConfirm(
+      'آیا از حذف این بنر مطمئن هستید؟',
+      () => {
+        const updatedBanners = (siteGeneralSettings.banners || []).filter(b => b.id !== bannerId);
+        handleSaveAllSiteSettings({
+          ...siteGeneralSettings,
+          banners: updatedBanners
+        });
+      }
+    );
   };
 
   const handleReplaceBannerImage = async (bannerId: number, file: File) => {
@@ -949,7 +984,10 @@ function App() {
       type: 'PHYSICAL',
       categoryId: siteCategories[0]?.id || '',
       downloadUrl: '',
-      inventory: ''
+      inventory: '',
+      isSpecialOffer: false,
+      specialPrice: '',
+      specialOfferEnd: ''
     });
     setShowProductModal(true);
   };
@@ -962,6 +1000,14 @@ function App() {
       specsStr = typeof product.specs === 'string' ? product.specs : JSON.stringify(product.specs, null, 2);
     } catch (e) {}
 
+    let formattedDate = '';
+    if (product.specialOfferEnd) {
+      const date = new Date(product.specialOfferEnd);
+      const offset = date.getTimezoneOffset();
+      const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
+      formattedDate = adjustedDate.toISOString().substring(0, 16);
+    }
+
     setProductFormData({
       name: product.name,
       slug: product.slug,
@@ -972,7 +1018,10 @@ function App() {
       type: product.type,
       categoryId: product.categoryId,
       downloadUrl: product.downloadUrl || '',
-      inventory: product.inventory !== null ? String(product.inventory) : ''
+      inventory: product.inventory !== null ? String(product.inventory) : '',
+      isSpecialOffer: product.isSpecialOffer || false,
+      specialPrice: product.specialPrice !== null ? String(product.specialPrice) : '',
+      specialOfferEnd: formattedDate
     });
     setShowProductModal(true);
   };
@@ -1326,6 +1375,115 @@ function App() {
                           </label>
                         </div>
 
+                        {/* PAGE: BANNER MANAGEMENT PANEL (NESTED DIRECTLY BELOW TOGGLE) */}
+                        {siteGeneralSettings.showBanners && (
+                          <div className="nested-banner-manager" style={{ padding: '20px', border: '1px solid var(--border)', borderRadius: 'var(--border-radius-md)', backgroundColor: 'var(--bg-base)', marginBottom: '16px', marginTop: '-8px' }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', fontWeight: 700 }}>مدیریت بنرهای اسلایدر ({siteGeneralSettings.banners?.length || 0} از ۵)</h4>
+                            <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              شما می‌توانید حداکثر ۵ بنر فعال داشته باشید. تصاویر به صورت خودکار به ابعاد ۳:۱ کراپ می‌شوند.
+                            </p>
+                            
+                            <div className="settings-notice-box" style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                              <strong>📌 نکته:</strong> ابعاد پیشنهادی ۱۲۰۰x۴۰۰ پیکسل با حداکثر حجم ۵۰۰ کیلوبایت است. در صورت مغایرت، عکس خودکار کراپ و فشرده خواهد شد.
+                            </div>
+
+                            <div className="banners-grid">
+                              {(siteGeneralSettings.banners || []).map((banner) => (
+                                <div key={banner.id} className="banner-edit-card" style={{ display: 'flex', gap: '16px', padding: '16px', border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '12px', backgroundColor: 'var(--bg-surface)' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '120px', flexShrink: 0 }}>
+                                    <div style={{ width: '100%', height: '60px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                      <img 
+                                        src={`http://localhost:3000${banner.image}`} 
+                                        alt={banner.title} 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = banner.image;
+                                        }}
+                                      />
+                                    </div>
+                                    <label className="btn-secondary" style={{ width: '100%', fontSize: '0.7rem', padding: '4px 8px', textAlign: 'center', cursor: 'pointer', display: 'block', margin: 0 }}>
+                                      <span>تغییر تصویر</span>
+                                      <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => {
+                                          if (e.target.files && e.target.files.length > 0) {
+                                            handleReplaceBannerImage(banner.id, e.target.files[0]);
+                                          }
+                                        }} 
+                                        style={{ display: 'none' }} 
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                      <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>عنوان بنر (Alt)</span>
+                                        <input 
+                                          type="text" 
+                                          value={banner.title} 
+                                          onChange={(e) => handleUpdateBannerField(banner.id, 'title', e.target.value)} 
+                                          style={{ width: '100%', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.8rem' }} 
+                                        />
+                                      </div>
+                                      <div style={{ flex: '2 1 180px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>لینک پیوند بنر</span>
+                                        <input 
+                                          type="text" 
+                                          value={banner.link} 
+                                          onChange={(e) => handleUpdateBannerField(banner.id, 'link', e.target.value)} 
+                                          style={{ width: '100%', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-base)', color: 'var(--text-main)', fontSize: '0.8rem', direction: 'ltr', textAlign: 'left' }} 
+                                        />
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => handleDeleteBanner(banner.id)} 
+                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 4px' }}
+                                      >
+                                        <Trash2 size={12} />
+                                        <span>حذف</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                              <div>
+                                {siteGeneralSettings.banners?.length < 5 ? (
+                                  <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', backgroundColor: 'var(--primary)', color: 'white', borderColor: 'var(--primary)', padding: '6px 12px', fontSize: '0.8rem' }}>
+                                    <Plus size={14} />
+                                    <span>افزودن بنر جدید</span>
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      onChange={handleAddBanner} 
+                                      style={{ display: 'none' }} 
+                                    />
+                                  </label>
+                                ) : (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ظرفیت اسلایدر تکمیل است (حداکثر ۵ بنر)</span>
+                                )}
+                              </div>
+                              
+                              {siteGeneralSettings.banners?.length > 0 && (
+                                <button 
+                                  type="button" 
+                                  className="btn-extend" 
+                                  style={{ backgroundColor: 'var(--primary)', fontSize: '0.8rem', padding: '6px 16px' }} 
+                                  onClick={handleSaveBannerChanges}
+                                >
+                                  ذخیره تغییرات بنرها
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="setting-switch-row">
                           <div className="setting-info">
                             <span className="setting-label">نمایش ویژگی‌های کلیدی و نمادهای اعتماد</span>
@@ -1387,125 +1545,6 @@ function App() {
                         </div>
                       </div>
                     </div>
-
-                    {/* PAGE: BANNER MANAGEMENT CARD */}
-                    {siteGeneralSettings.showBanners && (
-                      <div className="settings-section-card" style={{ marginTop: '24px' }}>
-                        <h3 className="settings-section-title">مدیریت بنرهای اسلایدر ({siteGeneralSettings.banners?.length || 0} از ۵)</h3>
-                        <p className="settings-section-desc">
-                          بنرهای اسلایدر بالای صفحه اصلی را مدیریت کنید. شما می‌توانید حداکثر ۵ بنر فعال داشته باشید.
-                        </p>
-                        
-                        {/* Notice for aspect ratio & auto crop */}
-                        <div className="settings-notice-box" style={{ marginBottom: '24px', padding: '16px', borderRadius: 'var(--border-radius-md)', backgroundColor: 'var(--bg-base)', borderRight: '4px solid var(--primary)', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                          <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '4px' }}>📌 توجه بسیار مهم برای اسلایدر:</strong>
-                          ابعاد استاندارد تصاویر بنر اسلایدر <strong>۱۲۰۰ در ۴۰۰ پیکسل</strong> و حداکثر حجم مجاز <strong>۵۰۰ کیلوبایت</strong> می‌باشد. 
-                          در صورتی که تصویر انتخابی شما ابعادی غیر از این داشته باشد، سیستم به صورت خودکار آن را به نسبت ۳:۱ کراپ (برش) کرده و جهت حفظ سرعت لود سایت بهینه‌سازی می‌کند.
-                        </div>
-
-                        <div className="banners-grid">
-                          {(siteGeneralSettings.banners || []).map((banner) => (
-                            <div key={banner.id} className="banner-edit-card" style={{ display: 'flex', gap: '20px', padding: '20px', border: '1px solid var(--border)', borderRadius: 'var(--border-radius-md)', marginBottom: '16px', backgroundColor: 'var(--bg-base)' }}>
-                              
-                              {/* Thumbnail preview with change image button */}
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '180px', flexShrink: 0 }}>
-                                <div style={{ width: '100%', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
-                                  <img 
-                                    src={`http://localhost:3000${banner.image}`} 
-                                    alt={banner.title} 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).src = banner.image;
-                                    }}
-                                  />
-                                </div>
-                                <label className="btn-secondary" style={{ width: '100%', fontSize: '0.75rem', padding: '6px 12px', textAlign: 'center', cursor: 'pointer', display: 'block', margin: 0 }}>
-                                  <span>تغییر تصویر</span>
-                                  <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    onChange={(e) => {
-                                      if (e.target.files && e.target.files.length > 0) {
-                                        handleReplaceBannerImage(banner.id, e.target.files[0]);
-                                      }
-                                    }} 
-                                    style={{ display: 'none' }} 
-                                  />
-                                </label>
-                              </div>
-
-                              {/* Form fields */}
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                  <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>عنوان بنر (Alt)</label>
-                                    <input 
-                                      type="text" 
-                                      value={banner.title} 
-                                      onChange={(e) => handleUpdateBannerField(banner.id, 'title', e.target.value)} 
-                                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem' }} 
-                                      placeholder="مثلاً: فروشگاه آنلاین سیدی آی‌تی"
-                                    />
-                                  </div>
-                                  <div style={{ flex: '2 1 300px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>لینک پیوند بنر</label>
-                                    <input 
-                                      type="text" 
-                                      value={banner.link} 
-                                      onChange={(e) => handleUpdateBannerField(banner.id, 'link', e.target.value)} 
-                                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem', direction: 'ltr', textAlign: 'left' }} 
-                                      placeholder="/products"
-                                    />
-                                  </div>
-                                </div>
-                                
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => handleDeleteBanner(banner.id)} 
-                                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.8rem', padding: '4px 8px' }}
-                                  >
-                                    <Trash2 size={14} />
-                                    <span>حذف این بنر</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Save link changes & Add new banner buttons */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                          <div>
-                            {siteGeneralSettings.banners?.length < 5 ? (
-                              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', backgroundColor: 'var(--primary)', color: 'white', borderColor: 'var(--primary)' }}>
-                                <Plus size={16} />
-                                <span>افزودن بنر جدید</span>
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  onChange={handleAddBanner} 
-                                  style={{ display: 'none' }} 
-                                />
-                              </label>
-                            ) : (
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ظرفیت اسلایدر تکمیل است (حداکثر ۵ بنر)</span>
-                            )}
-                          </div>
-                          
-                          {siteGeneralSettings.banners?.length > 0 && (
-                            <button 
-                              type="button" 
-                              className="btn-extend" 
-                              style={{ backgroundColor: 'var(--primary)', fontSize: '0.85rem', padding: '8px 20px' }} 
-                              onClick={handleSaveBannerChanges}
-                            >
-                              ذخیره تغییرات بنرها
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -2571,6 +2610,45 @@ function App() {
                   </div>
                 )}
 
+                {/* Special Offer Fields */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', gridColumn: 'span 2', marginTop: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="isSpecialOffer"
+                    checked={productFormData.isSpecialOffer}
+                    onChange={(e) => setProductFormData({ ...productFormData, isSpecialOffer: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="isSpecialOffer" style={{ fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>آیا این محصول در پیشنهاد ویژه قرار گیرد؟</label>
+                </div>
+
+                {productFormData.isSpecialOffer && (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>قیمت پیشنهاد ویژه (تومان) <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input 
+                        type="number" 
+                        className="modal-input" 
+                        value={productFormData.specialPrice}
+                        onChange={(e) => setProductFormData({ ...productFormData, specialPrice: e.target.value })}
+                        required={productFormData.isSpecialOffer}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>تاریخ و زمان پایان پیشنهاد <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input 
+                        type="datetime-local" 
+                        className="modal-input" 
+                        value={productFormData.specialOfferEnd}
+                        onChange={(e) => setProductFormData({ ...productFormData, specialOfferEnd: e.target.value })}
+                        required={productFormData.isSpecialOffer}
+                        style={{ direction: 'ltr', textAlign: 'left' }}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>توضیحات کوتاه معرفی محصول <span style={{ color: '#ef4444' }}>*</span></label>
                   <textarea 
@@ -2716,6 +2794,40 @@ function App() {
 
             <div className="modal-footer">
               <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setSelectedSiteTicket(null)}>بستن پنجره</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================
+         NEW MODAL: GLOBAL CUSTOM SITE CONFIRMATION MODAL (SITE ADMIN)
+         ========================================================== */}
+      {siteConfirmModal.open && (
+        <div className="modal-overlay open" onClick={() => setSiteConfirmModal(prev => ({ ...prev, open: false }))}>
+          <div className="modal-content custom-confirm-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px', borderRadius: '12px', padding: '24px' }}>
+            <div className="modal-body custom-confirm-body" style={{ padding: '8px 0' }}>
+              <div className="custom-confirm-message-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+                <AlertTriangle size={24} style={{ color: 'var(--text-muted)' }} />
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{siteConfirmModal.message}</span>
+              </div>
+              <div className="custom-confirm-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <button 
+                  type="button"
+                  className="btn-confirm-yes" 
+                  onClick={siteConfirmModal.onConfirm}
+                  style={{ padding: '8px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: 'white', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', minWidth: '100px' }}
+                >
+                  بله
+                </button>
+                <button 
+                  type="button"
+                  className="btn-confirm-no" 
+                  onClick={() => setSiteConfirmModal(prev => ({ ...prev, open: false }))}
+                  style={{ padding: '8px 24px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', minWidth: '100px' }}
+                >
+                  خیر
+                </button>
+              </div>
             </div>
           </div>
         </div>
