@@ -249,6 +249,7 @@ function App() {
     notaryProductIds: string[];
     blogPostsAuto: boolean;
     blogPostIds: string[];
+    homepageOrder: string[];
     banners: DashboardBanner[];
   }>({
     showBanners: true,
@@ -263,6 +264,7 @@ function App() {
     notaryProductIds: [],
     blogPostsAuto: true,
     blogPostIds: [],
+    homepageOrder: ["banners", "specialOffers", "about", "features", "products", "blog"],
     banners: []
   });
   const [siteLoading, setSiteLoading] = useState(false);
@@ -1451,6 +1453,120 @@ function App() {
                             ذخیره تغییرات درباره ما
                           </button>
                         </div>
+                    </div>
+
+                    {/* SECTION: HOMEPAGE LAYOUT SORTING */}
+                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                      <h3 className="settings-section-title">مدیریت چیدمان و ترتیب بخش‌های صفحه اصلی</h3>
+                      <p className="settings-section-desc">
+                        ترتیب قرارگیری بخش‌های مختلف صفحه اصلی وب‌سایت را تغییر دهید. بخش‌های خاموش شده از تنظیمات نمایش، در سایت مخفی خواهند بود.
+                      </p>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+                        {(siteGeneralSettings.homepageOrder || ["banners", "specialOffers", "about", "features", "products", "blog"]).map((sectionKey, index, arr) => {
+                          const SECTION_LABELS: Record<string, string> = {
+                            banners: 'اسلایدر بنرهای بالای صفحه',
+                            specialOffers: 'بخش پیشنهاد ویژه (محصولات تخفیف‌دار)',
+                            about: 'بخش معرفی درباره سیدی آی‌تی',
+                            features: 'بخش سه ویژگی کلیدی (ضمانت، پشتیبانی، ارسال)',
+                            products: 'بخش محصولات دفترخانه‌ای',
+                            blog: 'بخش آخرین مطالب وبلاگ آموزشی'
+                          };
+                          
+                          // Check if section is currently enabled
+                          let isEnabled = true;
+                          if (sectionKey === 'banners') isEnabled = siteGeneralSettings.showBanners;
+                          if (sectionKey === 'specialOffers') isEnabled = siteGeneralSettings.showSpecialOffers;
+                          if (sectionKey === 'features') isEnabled = siteGeneralSettings.showFeatures;
+                          if (sectionKey === 'products') isEnabled = siteGeneralSettings.showProducts;
+                          if (sectionKey === 'blog') isEnabled = siteGeneralSettings.showBlog;
+
+                          return (
+                            <div 
+                              key={sectionKey} 
+                              style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                padding: '12px 16px', 
+                                borderRadius: '8px', 
+                                backgroundColor: 'var(--bg-base)', 
+                                border: '1px solid var(--border)',
+                                opacity: isEnabled ? 1 : 0.55
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>{index + 1}.</span>
+                                <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                  {SECTION_LABELS[sectionKey] || sectionKey}
+                                </span>
+                                {!isEnabled && (
+                                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>خاموش</span>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {/* Move Up Button */}
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={() => {
+                                    const newOrder = [...arr];
+                                    // Swap elements
+                                    const temp = newOrder[index];
+                                    newOrder[index] = newOrder[index - 1];
+                                    newOrder[index - 1] = temp;
+                                    handleSaveAllSiteSettings({
+                                      ...siteGeneralSettings,
+                                      homepageOrder: newOrder
+                                    });
+                                  }}
+                                  style={{ 
+                                    padding: '6px 10px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid var(--border)', 
+                                    backgroundColor: 'var(--bg-surface)', 
+                                    color: index === 0 ? 'var(--text-muted)' : 'var(--text-main)', 
+                                    cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                    fontSize: '0.85rem'
+                                  }}
+                                  title="انتقال به بالا"
+                                >
+                                  ▲
+                                </button>
+
+                                {/* Move Down Button */}
+                                <button
+                                  type="button"
+                                  disabled={index === arr.length - 1}
+                                  onClick={() => {
+                                    const newOrder = [...arr];
+                                    // Swap elements
+                                    const temp = newOrder[index];
+                                    newOrder[index] = newOrder[index + 1];
+                                    newOrder[index + 1] = temp;
+                                    handleSaveAllSiteSettings({
+                                      ...siteGeneralSettings,
+                                      homepageOrder: newOrder
+                                    });
+                                  }}
+                                  style={{ 
+                                    padding: '6px 10px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid var(--border)', 
+                                    backgroundColor: 'var(--bg-surface)', 
+                                    color: index === arr.length - 1 ? 'var(--text-muted)' : 'var(--text-main)', 
+                                    cursor: index === arr.length - 1 ? 'not-allowed' : 'pointer',
+                                    fontSize: '0.85rem'
+                                  }}
+                                  title="انتقال به پایین"
+                                >
+                                  ▼
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
