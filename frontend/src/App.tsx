@@ -225,6 +225,7 @@ function App() {
   // ==========================================
   const [siteStats, setSiteStats] = useState<any>(null);
   const [siteProducts, setSiteProducts] = useState<any[]>([]);
+  const [sitePosts, setSitePosts] = useState<any[]>([]);
   const [siteCategories, setSiteCategories] = useState<any[]>([]);
   const [siteOrders, setSiteOrders] = useState<any[]>([]);
   const [siteTickets, setSiteTickets] = useState<any[]>([]);
@@ -245,6 +246,8 @@ function App() {
     specialOffersAuto: boolean;
     specialOffersProductIds: string[];
     notaryProductIds: string[];
+    blogPostsAuto: boolean;
+    blogPostIds: string[];
     banners: DashboardBanner[];
   }>({
     showBanners: true,
@@ -256,6 +259,8 @@ function App() {
     specialOffersAuto: true,
     specialOffersProductIds: [],
     notaryProductIds: [],
+    blogPostsAuto: true,
+    blogPostIds: [],
     banners: []
   });
   const [siteLoading, setSiteLoading] = useState(false);
@@ -563,7 +568,14 @@ function App() {
       const ticketData = await ticketRes.json();
       if (ticketData.success) setSiteTickets(ticketData.tickets);
 
-      // 5. Fetch General Settings
+      // 5. Fetch Blog Posts
+      const postsRes = await fetch('http://localhost:3000/api/admin/posts', {
+        headers: { 'Authorization': `Bearer ${siteToken}` }
+      });
+      const postsData = await postsRes.json();
+      if (postsData.success) setSitePosts(postsData.posts);
+
+      // 6. Fetch General Settings
       const settingsRes = await fetch('http://localhost:3000/api/admin/settings', {
         headers: { 'Authorization': `Bearer ${siteToken}` }
       });
@@ -1582,6 +1594,97 @@ function App() {
                         </div>
                       </div>
                     </div>
+
+                    {/* SECTION: BLOG POSTS MANAGEMENT */}
+                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                      <h3 className="settings-section-title">مدیریت مطالب بخش وبلاگ آموزشی</h3>
+                      <p className="settings-section-desc">
+                        تعیین کنید چه مطالبی در بخش آخرین مطالب وبلاگ آموزشی صفحه اصلی نمایش داده شوند.
+                      </p>
+                      
+                      <div className="settings-switches-list" style={{ padding: 0, border: 'none', marginBottom: '16px' }}>
+                        <div className="setting-switch-row" style={{ padding: '12px 0' }}>
+                          <div className="setting-info">
+                            <span className="setting-label">انتخاب خودکار آخرین مطالب منتشر شده</span>
+                            <span className="setting-subdesc">در صورت فعال بودن، آخرین مقالات منتشر شده به صورت خودکار نمایش داده می‌شوند.</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.blogPostsAuto} 
+                              onChange={(e) => handleSaveAllSiteSettings({
+                                ...siteGeneralSettings,
+                                blogPostsAuto: e.target.checked
+                              })} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {!siteGeneralSettings.blogPostsAuto && (
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                          <h4 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '12px' }}>مطالب انتخاب شده دستی ({siteGeneralSettings.blogPostIds?.length || 0})</h4>
+                          
+                          {/* List of currently selected blog posts */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                            {(siteGeneralSettings.blogPostIds || []).map((postId) => {
+                              const post = sitePosts.find(p => p.id === postId);
+                              if (!post) return null;
+                              return (
+                                <div key={postId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{post.title}</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      const updatedList = (siteGeneralSettings.blogPostIds || []).filter(id => id !== postId);
+                                      handleSaveAllSiteSettings({
+                                        ...siteGeneralSettings,
+                                        blogPostIds: updatedList
+                                      });
+                                    }}
+                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '4px' }}
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            {(siteGeneralSettings.blogPostIds || []).length === 0 && (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>هیچ مطلبی انتخاب نشده است. برای نمایش، مطلبی را از منوی زیر اضافه کنید.</span>
+                            )}
+                          </div>
+
+                          {/* Dropdown select box to add a blog post */}
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <select 
+                              defaultValue=""
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                if (!selectedId) return;
+                                const currentList = siteGeneralSettings.blogPostIds || [];
+                                if (currentList.includes(selectedId)) return;
+                                const updatedList = [...currentList, selectedId];
+                                handleSaveAllSiteSettings({
+                                  ...siteGeneralSettings,
+                                  blogPostIds: updatedList
+                                });
+                                e.target.value = "";
+                              }}
+                              style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem', fontFamily: 'var(--font-family)', cursor: 'pointer' }}
+                            >
+                              <option value="">-- انتخاب مقاله برای افزودن به بخش وبلاگ --</option>
+                              {sitePosts
+                                .filter(p => !(siteGeneralSettings.blogPostIds || []).includes(p.id))
+                                .map(p => (
+                                  <option key={p.id} value={p.id}>{p.title}</option>
+                                ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
 
                     {/* PAGE: BANNER MANAGEMENT CARD */}
                     {siteGeneralSettings.showBanners && (
