@@ -269,6 +269,7 @@ function App() {
   });
   const [siteLoading, setSiteLoading] = useState(false);
   const [siteError, setSiteError] = useState<string | null>(null);
+  const [settingsTab, setSettingsTab] = useState<'layout' | 'about' | 'special-offers' | 'notary' | 'blog' | 'banners'>('layout');
 
   // Site Login inputs
   const [siteLoginUsername, setSiteLoginUsername] = useState('admin');
