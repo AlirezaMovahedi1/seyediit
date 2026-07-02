@@ -241,6 +241,7 @@ function App() {
     showFeatures: boolean;
     showProducts: boolean;
     showBlog: boolean;
+    showSpecialOffers: boolean;
     aboutTitle: string;
     aboutText: string;
     specialOffersAuto: boolean;
@@ -254,6 +255,7 @@ function App() {
     showFeatures: true,
     showProducts: true,
     showBlog: true,
+    showSpecialOffers: true,
     aboutTitle: '',
     aboutText: '',
     specialOffersAuto: true,
@@ -1346,6 +1348,21 @@ function App() {
 
                         <div className="setting-switch-row">
                           <div className="setting-info">
+                            <span className="setting-label">نمایش بخش پیشنهاد ویژه</span>
+                            <span className="setting-subdesc">کنترل نمایش بخش محصولات پیشنهاد ویژه (تخفیف‌دار) در صفحه اصلی</span>
+                          </div>
+                          <label className="ios-switch">
+                            <input 
+                              type="checkbox" 
+                              checked={siteGeneralSettings.showSpecialOffers} 
+                              onChange={(e) => handleUpdateSiteSettings('showSpecialOffers', e.target.checked)} 
+                            />
+                            <span className="ios-slider"></span>
+                          </label>
+                        </div>
+
+                        <div className="setting-switch-row">
+                          <div className="setting-info">
                             <span className="setting-label">نمایش ویژگی‌های کلیدی و نمادهای اعتماد</span>
                             <span className="setting-subdesc">کنترل نمایش بخش سه ویژگی ضمانت، پشتیبانی و ارسال در صفحه اصلی</span>
                           </div>
@@ -1438,94 +1455,96 @@ function App() {
                     </div>
 
                     {/* SECTION: SPECIAL OFFERS PRODUCT MANAGEMENT */}
-                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
-                      <h3 className="settings-section-title">مدیریت محصولات بخش پیشنهاد ویژه</h3>
-                      <p className="settings-section-desc">
-                        تعیین کنید چه محصولاتی در بخش پیشنهاد ویژه صفحه اصلی نمایش داده شوند.
-                      </p>
-                      
-                      <div className="settings-switches-list" style={{ padding: 0, border: 'none', marginBottom: '16px' }}>
-                        <div className="setting-switch-row" style={{ padding: '12px 0' }}>
-                          <div className="setting-info">
-                            <span className="setting-label">انتخاب خودکار محصولات با بیشترین تخفیف</span>
-                            <span className="setting-subdesc">در صورت فعال بودن، محصولاتی که بیشترین درصد تخفیف را دارند به طور خودکار نمایش داده می‌شوند.</span>
-                          </div>
-                          <label className="ios-switch">
-                            <input 
-                              type="checkbox" 
-                              checked={siteGeneralSettings.specialOffersAuto} 
-                              onChange={(e) => handleSaveAllSiteSettings({
-                                ...siteGeneralSettings,
-                                specialOffersAuto: e.target.checked
-                              })} 
-                            />
-                            <span className="ios-slider"></span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {!siteGeneralSettings.specialOffersAuto && (
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                          <h4 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '12px' }}>محصولات انتخاب شده دستی ({siteGeneralSettings.specialOffersProductIds?.length || 0})</h4>
-                          
-                          {/* List of currently selected special offers */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                            {(siteGeneralSettings.specialOffersProductIds || []).map((prodId) => {
-                              const product = siteProducts.find(p => p.id === prodId);
-                              if (!product) return null;
-                              return (
-                                <div key={prodId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)' }}>
-                                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.name}</span>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => {
-                                      const updatedList = (siteGeneralSettings.specialOffersProductIds || []).filter(id => id !== prodId);
-                                      handleSaveAllSiteSettings({
-                                        ...siteGeneralSettings,
-                                        specialOffersProductIds: updatedList
-                                      });
-                                    }}
-                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '4px' }}
-                                  >
-                                    حذف
-                                  </button>
-                                </div>
-                              );
-                            })}
-                            {(siteGeneralSettings.specialOffersProductIds || []).length === 0 && (
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>هیچ محصولی انتخاب نشده است. برای نمایش، محصولی را از منوی زیر اضافه کنید.</span>
-                            )}
-                          </div>
-
-                          {/* Dropdown select box to add a product */}
-                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            <select 
-                              defaultValue=""
-                              onChange={(e) => {
-                                const selectedId = e.target.value;
-                                if (!selectedId) return;
-                                const currentList = siteGeneralSettings.specialOffersProductIds || [];
-                                if (currentList.includes(selectedId)) return;
-                                const updatedList = [...currentList, selectedId];
-                                handleSaveAllSiteSettings({
+                    {siteGeneralSettings.showSpecialOffers && (
+                      <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                        <h3 className="settings-section-title">مدیریت محصولات بخش پیشنهاد ویژه</h3>
+                        <p className="settings-section-desc">
+                          تعیین کنید چه محصولاتی در بخش پیشنهاد ویژه صفحه اصلی نمایش داده شوند.
+                        </p>
+                        
+                        <div className="settings-switches-list" style={{ padding: 0, border: 'none', marginBottom: '16px' }}>
+                          <div className="setting-switch-row" style={{ padding: '12px 0' }}>
+                            <div className="setting-info">
+                              <span className="setting-label">انتخاب خودکار محصولات با بیشترین تخفیف</span>
+                              <span className="setting-subdesc">در صورت فعال بودن، محصولاتی که بیشترین درصد تخفیف را دارند به طور خودکار نمایش داده می‌شوند.</span>
+                            </div>
+                            <label className="ios-switch">
+                              <input 
+                                type="checkbox" 
+                                checked={siteGeneralSettings.specialOffersAuto} 
+                                onChange={(e) => handleSaveAllSiteSettings({
                                   ...siteGeneralSettings,
-                                  specialOffersProductIds: updatedList
-                                });
-                                e.target.value = "";
-                              }}
-                              style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem', fontFamily: 'var(--font-family)', cursor: 'pointer' }}
-                            >
-                              <option value="">-- انتخاب محصول برای افزودن به پیشنهاد ویژه --</option>
-                              {siteProducts
-                                .filter(p => !(siteGeneralSettings.specialOffersProductIds || []).includes(p.id))
-                                .map(p => (
-                                  <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                                  specialOffersAuto: e.target.checked
+                                })} 
+                              />
+                              <span className="ios-slider"></span>
+                            </label>
                           </div>
                         </div>
-                      )}
-                    </div>
+
+                        {!siteGeneralSettings.specialOffersAuto && (
+                          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                            <h4 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '12px' }}>محصولات انتخاب شده دستی ({siteGeneralSettings.specialOffersProductIds?.length || 0})</h4>
+                            
+                            {/* List of currently selected special offers */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                              {(siteGeneralSettings.specialOffersProductIds || []).map((prodId) => {
+                                const product = siteProducts.find(p => p.id === prodId);
+                                if (!product) return null;
+                                return (
+                                  <div key={prodId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: '6px', backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{product.name}</span>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        const updatedList = (siteGeneralSettings.specialOffersProductIds || []).filter(id => id !== prodId);
+                                        handleSaveAllSiteSettings({
+                                          ...siteGeneralSettings,
+                                          specialOffersProductIds: updatedList
+                                        });
+                                      }}
+                                      style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '4px' }}
+                                    >
+                                      حذف
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              {(siteGeneralSettings.specialOffersProductIds || []).length === 0 && (
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>هیچ محصولی انتخاب نشده است. برای نمایش، محصولی را از منوی زیر اضافه کنید.</span>
+                              )}
+                            </div>
+
+                            {/* Dropdown select box to add a product */}
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                              <select 
+                                defaultValue=""
+                                onChange={(e) => {
+                                  const selectedId = e.target.value;
+                                  if (!selectedId) return;
+                                  const currentList = siteGeneralSettings.specialOffersProductIds || [];
+                                  if (currentList.includes(selectedId)) return;
+                                  const updatedList = [...currentList, selectedId];
+                                  handleSaveAllSiteSettings({
+                                    ...siteGeneralSettings,
+                                    specialOffersProductIds: updatedList
+                                  });
+                                  e.target.value = "";
+                                }}
+                                style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.85rem', fontFamily: 'var(--font-family)', cursor: 'pointer' }}
+                              >
+                                <option value="">-- انتخاب محصول برای افزودن به پیشنهاد ویژه --</option>
+                                {siteProducts
+                                  .filter(p => !(siteGeneralSettings.specialOffersProductIds || []).includes(p.id))
+                                  .map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* SECTION: NOTARY OFFICE PRODUCTS MANAGEMENT */}
                     <div className="settings-section-card" style={{ marginTop: '24px' }}>
