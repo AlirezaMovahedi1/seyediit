@@ -241,6 +241,8 @@ function App() {
     showCategories: boolean;
     showProducts: boolean;
     showBlog: boolean;
+    aboutTitle: string;
+    aboutText: string;
     banners: DashboardBanner[];
   }>({
     showBanners: true,
@@ -248,6 +250,8 @@ function App() {
     showCategories: true,
     showProducts: true,
     showBlog: true,
+    aboutTitle: '',
+    aboutText: '',
     banners: []
   });
   const [siteLoading, setSiteLoading] = useState(false);
@@ -1356,8 +1360,8 @@ function App() {
 
                         <div className="setting-switch-row">
                           <div className="setting-info">
-                            <span className="setting-label">نمایش محصولات برگزیده</span>
-                            <span className="setting-subdesc">کنترل نمایش بخش معرفی محصولات برتر و برگزیده</span>
+                            <span className="setting-label">نمایش محصولات دفترخانه‌ای</span>
+                            <span className="setting-subdesc">کنترل نمایش بخش معرفی محصولات دفترخانه‌ای</span>
                           </div>
                           <label className="ios-switch">
                             <input 
@@ -1382,6 +1386,52 @@ function App() {
                             />
                             <span className="ios-slider"></span>
                           </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NEW SECTION: EDIT ABOUT SEYEDI IT TITLE AND TEXT */}
+                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                      <h3 className="settings-section-title">تنظیمات بخش درباره سیدی آی‌تی</h3>
+                      <p className="settings-section-desc">
+                        عنوان و متن اصلی بخش درباره ما را در صفحه اصلی وب‌سایت ویرایش کنید.
+                      </p>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>عنوان بخش درباره ما</label>
+                          <input 
+                            type="text" 
+                            value={siteGeneralSettings.aboutTitle || ''} 
+                            onChange={(e) => setSiteGeneralSettings(prev => ({ ...prev, aboutTitle: e.target.value }))} 
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.88rem' }}
+                            placeholder="مثلا: درباره سیدی آی‌تی"
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>متن اصلی بخش درباره ما</label>
+                          <textarea 
+                            value={siteGeneralSettings.aboutText || ''} 
+                            onChange={(e) => setSiteGeneralSettings(prev => ({ ...prev, aboutText: e.target.value }))} 
+                            rows={6}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', fontSize: '0.88rem', resize: 'vertical', lineHeight: '1.6' }}
+                            placeholder="متن کامل درباره مجموعه را اینجا بنویسید..."
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                          <button 
+                            type="button" 
+                            className="btn-extend" 
+                            style={{ backgroundColor: 'var(--primary)', fontSize: '0.85rem', padding: '8px 20px' }} 
+                            onClick={() => {
+                              handleSaveAllSiteSettings(siteGeneralSettings);
+                              alert('تنظیمات بخش درباره ما با موفقیت ذخیره شد.');
+                            }}
+                          >
+                            ذخیره تغییرات درباره ما
+                          </button>
                         </div>
                       </div>
                     </div>
