@@ -1453,6 +1453,7 @@ function App() {
                             ذخیره تغییرات درباره ما
                           </button>
                         </div>
+                      </div>
                     </div>
 
                     {/* SECTION: HOMEPAGE LAYOUT SORTING */}
