@@ -1323,10 +1323,168 @@ function App() {
                   </div>
                 )}
 
-                {/* PAGE: GENERAL SETTINGS */}
                 {activeMenu === 'site-settings' && (
-                  <div className="settings-container">
-                    <div className="settings-section-card">
+                  <div className="settings-tabbed-container" style={{ display: 'flex', gap: '24px', direction: 'rtl' }}>
+                    {/* Tab Navigation Sidebar */}
+                    <div className="settings-sidebar" style={{ width: '260px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('layout')}
+                        className={`settings-tab-btn ${settingsTab === 'layout' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'layout' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'layout' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'layout' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Sliders size={18} />
+                        <span>مدیریت چیدمان و نمایش</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('banners')}
+                        className={`settings-tab-btn ${settingsTab === 'banners' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'banners' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'banners' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'banners' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s',
+                          opacity: siteGeneralSettings.showBanners ? 1 : 0.55
+                        }}
+                      >
+                        <Archive size={18} />
+                        <span>بنرهای اسلایدر</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('special-offers')}
+                        className={`settings-tab-btn ${settingsTab === 'special-offers' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'special-offers' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'special-offers' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'special-offers' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s',
+                          opacity: siteGeneralSettings.showSpecialOffers ? 1 : 0.55
+                        }}
+                      >
+                        <ShoppingCart size={18} />
+                        <span>محصولات پیشنهاد ویژه</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('notary')}
+                        className={`settings-tab-btn ${settingsTab === 'notary' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'notary' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'notary' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'notary' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s',
+                          opacity: siteGeneralSettings.showProducts ? 1 : 0.55
+                        }}
+                      >
+                        <Package size={18} />
+                        <span>محصولات دفترخانه‌ای</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('blog')}
+                        className={`settings-tab-btn ${settingsTab === 'blog' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'blog' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'blog' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'blog' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s',
+                          opacity: siteGeneralSettings.showBlog ? 1 : 0.55
+                        }}
+                      >
+                        <FileText size={18} />
+                        <span>آخرین مطالب وبلاگ</span>
+                      </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => setSettingsTab('about')}
+                        className={`settings-tab-btn ${settingsTab === 'about' ? 'active' : ''}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid',
+                          borderColor: settingsTab === 'about' ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: settingsTab === 'about' ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface)',
+                          color: settingsTab === 'about' ? 'var(--primary)' : 'var(--text-main)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontSize: '0.88rem',
+                          textAlign: 'right',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <User size={18} />
+                        <span>درباره سیدی آی‌تی</span>
+                      </button>
+                    </div>
+
+                    {/* Active Settings Panel Content */}
+                    <div className="settings-main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      <div className="settings-section-card" style={{ display: settingsTab === 'layout' ? 'block' : 'none' }}>
                       <h3 className="settings-section-title">تنظیمات نمایش بخش‌های صفحه اصلی وب‌سایت</h3>
                       <p className="settings-section-desc">
                         با غیرفعال کردن هر یک از بخش‌های زیر، آن بخش به صورت آنی در صفحه اول وب‌سایت سیدی آی‌تی مخفی خواهد شد.
@@ -1411,7 +1569,7 @@ function App() {
                     </div>
 
                     {/* NEW SECTION: EDIT ABOUT SEYEDI IT TITLE AND TEXT */}
-                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    <div className="settings-section-card" style={{ display: settingsTab === 'about' ? 'block' : 'none' }}>
                       <h3 className="settings-section-title">تنظیمات بخش درباره سیدی آی‌تی</h3>
                       <p className="settings-section-desc">
                         عنوان و متن اصلی بخش درباره ما را در صفحه اصلی وب‌سایت ویرایش کنید.
@@ -1457,7 +1615,7 @@ function App() {
                     </div>
 
                     {/* SECTION: HOMEPAGE LAYOUT SORTING */}
-                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    <div className="settings-section-card" style={{ display: settingsTab === 'layout' ? 'block' : 'none', marginTop: '24px' }}>
                       <h3 className="settings-section-title">مدیریت چیدمان و ترتیب بخش‌های صفحه اصلی</h3>
                       <p className="settings-section-desc">
                         ترتیب قرارگیری بخش‌های مختلف صفحه اصلی وب‌سایت را تغییر دهید. بخش‌های خاموش شده از تنظیمات نمایش، در سایت مخفی خواهند بود.
@@ -1572,8 +1730,14 @@ function App() {
                     </div>
 
                     {/* SECTION: SPECIAL OFFERS PRODUCT MANAGEMENT */}
-                    {siteGeneralSettings.showSpecialOffers && (
-                      <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    {settingsTab === 'special-offers' && (
+                      !siteGeneralSettings.showSpecialOffers ? (
+                        <div className="settings-notice-box" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', backgroundColor: 'var(--bg-surface)', borderRight: '4px solid #ef4444', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                          🔒 <strong>بخش پیشنهاد ویژه غیرفعال است.</strong><br/>
+                          برای دسترسی به مدیریت محصولات تخفیف‌دار، ابتدا باید بخش «پیشنهاد ویژه» را در تب <strong>مدیریت چیدمان و نمایش</strong> روشن کنید.
+                        </div>
+                      ) : (
+                        <div className="settings-section-card">
                         <h3 className="settings-section-title">مدیریت محصولات بخش پیشنهاد ویژه</h3>
                         <p className="settings-section-desc">
                           تعیین کنید چه محصولاتی در بخش پیشنهاد ویژه صفحه اصلی نمایش داده شوند.
@@ -1661,10 +1825,17 @@ function App() {
                           </div>
                         )}
                       </div>
-                    )}
+                    ))}
 
                     {/* SECTION: NOTARY OFFICE PRODUCTS MANAGEMENT */}
-                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    {settingsTab === 'notary' && (
+                      !siteGeneralSettings.showProducts ? (
+                        <div className="settings-notice-box" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', backgroundColor: 'var(--bg-surface)', borderRight: '4px solid #ef4444', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                          🔒 <strong>بخش محصولات دفترخانه‌ای غیرفعال است.</strong><br/>
+                          برای دسترسی به مدیریت محصولات دفترخانه‌ای، ابتدا باید این بخش را در تب <strong>مدیریت چیدمان و نمایش</strong> روشن کنید.
+                        </div>
+                      ) : (
+                        <div className="settings-section-card" style={{ marginTop: '24px' }}>
                       <h3 className="settings-section-title">مدیریت محصولات بخش محصولات دفترخانه‌ای</h3>
                       <p className="settings-section-desc">
                         تعیین کنید چه محصولاتی در بخش محصولات دفترخانه‌ای صفحه اصلی نمایش داده شوند. در صورت عدم انتخاب، محصولات به طور خودکار لود می‌شوند.
@@ -1730,9 +1901,17 @@ function App() {
                         </div>
                       </div>
                     </div>
+                    ))}
 
                     {/* SECTION: BLOG POSTS MANAGEMENT */}
-                    <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    {settingsTab === 'blog' && (
+                      !siteGeneralSettings.showBlog ? (
+                        <div className="settings-notice-box" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', backgroundColor: 'var(--bg-surface)', borderRight: '4px solid #ef4444', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                          🔒 <strong>بخش مطالب وبلاگ غیرفعال است.</strong><br/>
+                          برای دسترسی به مدیریت مطالب وبلاگ، ابتدا باید این بخش را در تب <strong>مدیریت چیدمان و نمایش</strong> روشن کنید.
+                        </div>
+                      ) : (
+                        <div className="settings-section-card" style={{ marginTop: '24px' }}>
                       <h3 className="settings-section-title">مدیریت مطالب بخش وبلاگ آموزشی</h3>
                       <p className="settings-section-desc">
                         تعیین کنید چه مطالبی در بخش آخرین مطالب وبلاگ آموزشی صفحه اصلی نمایش داده شوند.
@@ -1820,11 +1999,18 @@ function App() {
                         </div>
                       )}
                     </div>
+                    ))}
 
 
                     {/* PAGE: BANNER MANAGEMENT CARD */}
-                    {siteGeneralSettings.showBanners && (
-                      <div className="settings-section-card" style={{ marginTop: '24px' }}>
+                    {settingsTab === 'banners' && (
+                      !siteGeneralSettings.showBanners ? (
+                        <div className="settings-notice-box" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', backgroundColor: 'var(--bg-surface)', borderRight: '4px solid #ef4444', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                          🔒 <strong>بخش بنرهای اسلایدر غیرفعال است.</strong><br/>
+                          برای دسترسی به مدیریت بنرهای اسلایدر، ابتدا باید این بخش را در تب <strong>مدیریت چیدمان و نمایش</strong> روشن کنید.
+                        </div>
+                      ) : (
+                        <div className="settings-section-card" style={{ marginTop: '24px' }}>
                         <h3 className="settings-section-title">مدیریت بنرهای اسلایدر ({siteGeneralSettings.banners?.length || 0} از ۵)</h3>
                         <p className="settings-section-desc">
                           بنرهای اسلایدر بالای صفحه اصلی را مدیریت کنید. شما می‌توانید حداکثر ۵ بنر فعال داشته باشید.
@@ -1939,8 +2125,9 @@ function App() {
                           )}
                         </div>
                       </div>
-                    )}
+                    ))}
                   </div>
+                </div>
                 )}
 
                 {/* PAGE: LIVE STATS */}
